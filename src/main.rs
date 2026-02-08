@@ -111,7 +111,7 @@ fn main() {
 
     // Divider item
     let divider = NSMenuItem::separatorItem(mtm);
-    let _ = menu.addItem(&divider);
+    menu.addItem(&divider);
 
     // Settings item
     let settings_title = NSString::from_str("Settings");
