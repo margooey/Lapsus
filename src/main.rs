@@ -5,10 +5,11 @@ pub mod trackpad;
 pub mod utils;
 
 use cidre::cg::Float;
-use objc2::{rc::autoreleasepool, sel, MainThreadOnly};
+use objc2::{MainThreadOnly, rc::autoreleasepool, sel};
 use objc2_app_kit::{
     NSApplication, NSApplicationActivationPolicy, NSBackingStoreType, NSEventMask, NSMenu,
-    NSStatusBar, NSVariableStatusItemLength, NSWindow, NSWindowController, NSWindowStyleMask,
+    NSMenuItem, NSStatusBar, NSVariableStatusItemLength, NSWindow, NSWindowController,
+    NSWindowStyleMask,
 };
 use objc2_foundation::{
     MainThreadMarker, NSDate, NSDefaultRunLoopMode, NSPoint, NSRect, NSSize, NSString,
@@ -47,7 +48,7 @@ fn main() {
     /*
     use std::fs::File;
     use std::io::Write;
-    
+
     let target = Box::new(File::create("lapsus_log.txt").expect("Can't create file"));
 
     env_logger::Builder::new()
@@ -71,7 +72,22 @@ fn main() {
     let app = NSApplication::sharedApplication(mtm);
     app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
 
-    // Status bar setup
+    // Window setup (settings)
+    let window = NSWindow::alloc(mtm);
+    let window_controller = NSWindowController::alloc(mtm);
+    let _window = unsafe {
+        NSWindow::initWithContentRect_styleMask_backing_defer(
+            window,
+            NSRect::new(NSPoint::new(100.0, 100.0), NSSize::new(800.0, 600.0)),
+            NSWindowStyleMask::Titled | NSWindowStyleMask::Closable,
+            NSBackingStoreType::Buffered,
+            false,
+        )
+    };
+    let window_controller = NSWindowController::initWithWindow(window_controller, Some(&_window));
+    let _window_controller = window_controller;
+
+    // Status item setup
     let status_bar = NSStatusBar::systemStatusBar();
     let status_item = status_bar.statusItemWithLength(NSVariableStatusItemLength);
     let button = status_item
@@ -80,34 +96,38 @@ fn main() {
     let title = NSString::from_str("⬤");
     button.setTitle(&title);
     let menu = NSMenu::new(mtm);
+
+    // Quit item
     let quit_title = NSString::from_str("Quit Lapsus");
-    let key_equivalent = NSString::from_str("q");
+    let quit_key_equivalent = NSString::from_str("q");
     let quit_item = unsafe {
         menu.addItemWithTitle_action_keyEquivalent(
             &quit_title,
             Some(sel!(terminate:)),
-            &key_equivalent,
+            &quit_key_equivalent,
         )
     };
     unsafe { quit_item.setTarget(Some(&app)) };
+
+    // Divider item
+    let divider = NSMenuItem::separatorItem(mtm);
+    let _ = menu.addItem(&divider);
+
+    // Settings item
+    let settings_title = NSString::from_str("Settings");
+    let settings_key_equivalent = NSString::from_str(",");
+    let settings_item = unsafe {
+        menu.addItemWithTitle_action_keyEquivalent(
+            &settings_title,
+            Some(sel!(showWindow:)),
+            &settings_key_equivalent,
+        )
+    };
+    unsafe { settings_item.setTarget(Some(&_window_controller)) };
+
+    // Initialize status item
     status_item.setMenu(Some(&menu));
     let _status_item = status_item;
-
-    // Window setup (settings)
-    let window = NSWindow::alloc(mtm);
-    let window_controller = NSWindowController::alloc(mtm);
-    let _window = unsafe {
-    NSWindow::initWithContentRect_styleMask_backing_defer(
-        window,
-        NSRect::new(NSPoint::new(100.0, 100.0), NSSize::new(800.0, 600.0)),
-        NSWindowStyleMask::Titled | NSWindowStyleMask::Closable,
-        NSBackingStoreType::Buffered,
-        false,
-    )
-};
-    // Window controller setup
-    let _window_controller = NSWindowController::initWithWindow(window_controller, Some(&_window));
-    unsafe { _window_controller.showWindow(None) } ;
 
     // Controller setup
     let mut controller = controller::Controller::new();
