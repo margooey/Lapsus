@@ -5,7 +5,6 @@ pub mod trackpad;
 pub mod ui;
 pub mod utils;
 
-use cidre::cg::Float;
 use objc2::rc::autoreleasepool;
 use objc2_app_kit::NSEventMask;
 use objc2_foundation::{NSDate, NSDefaultRunLoopMode};
@@ -28,13 +27,13 @@ static CONFIG: OnceLock<Config> = OnceLock::new();
 
 pub fn config() -> &'static Config {
     CONFIG.get_or_init(|| Config {
-        maximum_momentum_speed: env!("MAXIMUM_MOMENTUM_SPEED").parse::<Float>().unwrap(),
-        trackpad_velocity_gain: env!("TRACKPAD_VELOCITY_GAIN").parse::<Float>().unwrap(),
-        glide_decay_per_second: env!("GLIDE_DECAY_PER_SECOND").parse::<Float>().unwrap(),
-        minimum_glide_velocity: env!("MINIMUM_GLIDE_VELOCITY").parse::<Float>().unwrap(),
-        glide_stop_speed_factor: env!("GLIDE_STOP_SPEED_FACTOR").parse::<Float>().unwrap(),
-        velocity_smoothing: env!("VELOCITY_SMOOTHING").parse::<Float>().unwrap(),
-        min_dt: env!("MIN_DT").parse::<Float>().unwrap(),
+        maximum_momentum_speed: env!("MAXIMUM_MOMENTUM_SPEED").parse::<f64>().unwrap(),
+        trackpad_velocity_gain: env!("TRACKPAD_VELOCITY_GAIN").parse::<f64>().unwrap(),
+        glide_decay_per_second: env!("GLIDE_DECAY_PER_SECOND").parse::<f64>().unwrap(),
+        minimum_glide_velocity: env!("MINIMUM_GLIDE_VELOCITY").parse::<f64>().unwrap(),
+        glide_stop_speed_factor: env!("GLIDE_STOP_SPEED_FACTOR").parse::<f64>().unwrap(),
+        velocity_smoothing: env!("VELOCITY_SMOOTHING").parse::<f64>().unwrap(),
+        min_dt: env!("MIN_DT").parse::<f64>().unwrap(),
         multi_finger_suppression_deadline: env!("MULTI_FINGER_SUPPRESSION_DEADLINE")
             .parse::<f64>()
             .unwrap(),
