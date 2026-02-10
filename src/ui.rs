@@ -1,7 +1,7 @@
 use objc2::{MainThreadOnly, rc::Retained, sel};
 use objc2_app_kit::{
-    NSApplication, NSApplicationActivationPolicy, NSBackingStoreType, NSMenu, NSMenuItem,
-    NSStatusBar, NSStatusItem, NSVariableStatusItemLength, NSWindow, NSWindowController,
+    NSApplication, NSApplicationActivationPolicy, NSBackingStoreType, NSButton, NSMenu, NSMenuItem,
+    NSStatusBar, NSStatusItem, NSVariableStatusItemLength, NSView, NSWindow, NSWindowController,
     NSWindowStyleMask,
 };
 use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
@@ -17,22 +17,36 @@ impl UI {
         let mtm = MainThreadMarker::new().expect("must be on the main thread");
         let app = NSApplication::sharedApplication(mtm);
         app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
+        let frame_rect = NSRect::new(NSPoint::new(100.0, 100.0), NSSize::new(800.0, 600.0));
 
         // Window setup (settings)
         let window = NSWindow::alloc(mtm);
-        let window_controller = NSWindowController::alloc(mtm);
         let _window = unsafe {
             NSWindow::initWithContentRect_styleMask_backing_defer(
                 window,
-                NSRect::new(NSPoint::new(100.0, 100.0), NSSize::new(800.0, 600.0)),
+                frame_rect,
                 NSWindowStyleMask::Titled | NSWindowStyleMask::Closable,
                 NSBackingStoreType::Buffered,
                 false,
             )
         };
+        _window.setTitle(&NSString::from_str("Lapsus Settings"));
+        let window_controller = NSWindowController::alloc(mtm);
         let window_controller =
             NSWindowController::initWithWindow(window_controller, Some(&_window));
         let _window_controller = window_controller;
+
+        // Content view setup
+        let view = NSView::alloc(mtm);
+        let _view = NSView::initWithFrame(view, frame_rect);
+        _window.setContentView(Some(&_view));
+
+        // Settings buttons (WIP)
+        let button = NSButton::alloc(mtm);
+        let button_rect = NSRect::new(NSPoint::new(400.0, 300.0), NSSize::new(100.0, 100.0));
+        let _button = NSButton::initWithFrame(button, button_rect);
+        _button.setTitle(&NSString::from_str("Test"));
+        _view.addSubview(&_button);
 
         // Status item setup
         let status_bar = NSStatusBar::systemStatusBar();
