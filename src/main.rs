@@ -2,19 +2,16 @@ pub mod controller;
 pub mod engine;
 pub mod tests;
 pub mod trackpad;
+pub mod ui;
 pub mod utils;
 
 use cidre::cg::Float;
-use objc2::{MainThreadOnly, rc::autoreleasepool, sel};
-use objc2_app_kit::{
-    NSApplication, NSApplicationActivationPolicy, NSBackingStoreType, NSEventMask, NSMenu,
-    NSMenuItem, NSStatusBar, NSVariableStatusItemLength, NSWindow, NSWindowController,
-    NSWindowStyleMask,
-};
-use objc2_foundation::{
-    MainThreadMarker, NSDate, NSDefaultRunLoopMode, NSPoint, NSRect, NSSize, NSString,
-};
+use objc2::rc::autoreleasepool;
+use objc2_app_kit::NSEventMask;
+use objc2_foundation::{NSDate, NSDefaultRunLoopMode};
 use std::{env, sync::OnceLock};
+
+use crate::ui::UI;
 
 pub struct Config {
     maximum_momentum_speed: f64,
@@ -67,67 +64,8 @@ fn main() {
         })
         .init();*/
 
-    // Generic AppKit setup
-    let mtm = MainThreadMarker::new().expect("must be on the main thread");
-    let app = NSApplication::sharedApplication(mtm);
-    app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
-
-    // Window setup (settings)
-    let window = NSWindow::alloc(mtm);
-    let window_controller = NSWindowController::alloc(mtm);
-    let _window = unsafe {
-        NSWindow::initWithContentRect_styleMask_backing_defer(
-            window,
-            NSRect::new(NSPoint::new(100.0, 100.0), NSSize::new(800.0, 600.0)),
-            NSWindowStyleMask::Titled | NSWindowStyleMask::Closable,
-            NSBackingStoreType::Buffered,
-            false,
-        )
-    };
-    let window_controller = NSWindowController::initWithWindow(window_controller, Some(&_window));
-    let _window_controller = window_controller;
-
-    // Status item setup
-    let status_bar = NSStatusBar::systemStatusBar();
-    let status_item = status_bar.statusItemWithLength(NSVariableStatusItemLength);
-    let button = status_item
-        .button(mtm)
-        .expect("status bar item should have a button");
-    let title = NSString::from_str("⬤");
-    button.setTitle(&title);
-    let menu = NSMenu::new(mtm);
-
-    // Quit item
-    let quit_title = NSString::from_str("Quit Lapsus");
-    let quit_key_equivalent = NSString::from_str("q");
-    let quit_item = unsafe {
-        menu.addItemWithTitle_action_keyEquivalent(
-            &quit_title,
-            Some(sel!(terminate:)),
-            &quit_key_equivalent,
-        )
-    };
-    unsafe { quit_item.setTarget(Some(&app)) };
-
-    // Divider item
-    let divider = NSMenuItem::separatorItem(mtm);
-    menu.addItem(&divider);
-
-    // Settings item
-    let settings_title = NSString::from_str("Settings");
-    let settings_key_equivalent = NSString::from_str(",");
-    let settings_item = unsafe {
-        menu.addItemWithTitle_action_keyEquivalent(
-            &settings_title,
-            Some(sel!(showWindow:)),
-            &settings_key_equivalent,
-        )
-    };
-    unsafe { settings_item.setTarget(Some(&_window_controller)) };
-
-    // Initialize status item
-    status_item.setMenu(Some(&menu));
-    let _status_item = status_item;
+    // UI setup
+    let ui = UI::initialize();
 
     // Controller setup
     let mut controller = controller::Controller::new();
@@ -136,17 +74,17 @@ fn main() {
     loop {
         // Update the cursor state and drain the autoreleasepool on every tick (default MIN_DT = 200Hz)
         autoreleasepool(|_pool| {
-            let _ = &_status_item;
+            let _ = &ui.status_item;
             let expiration = NSDate::dateWithTimeIntervalSinceNow(config().min_dt);
-            if let Some(event) = app.nextEventMatchingMask_untilDate_inMode_dequeue(
+            if let Some(event) = ui.app.nextEventMatchingMask_untilDate_inMode_dequeue(
                 NSEventMask::Any,
                 Some(&expiration),
                 unsafe { NSDefaultRunLoopMode },
                 true,
             ) {
-                app.sendEvent(&event);
+                ui.app.sendEvent(&event);
             }
-            app.updateWindows();
+            ui.app.updateWindows();
             utils::disable_local_event_suppression();
             controller.update_state();
         });

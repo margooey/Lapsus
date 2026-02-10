@@ -5,18 +5,12 @@ use objc2_app_kit::NSScreen;
 
 pub const ZERO_VECTOR: Vector = Vector { dx: 0.0, dy: 0.0 };
 
-enum VelocitySource {
-    Pointer,
-    Trackpad,
-}
-
 pub struct State {
     position: Point,
     previous_position: Point,
     last_input_delta: Vector,
     velocity: Vector,
     pub is_gliding: bool,
-    velocity_source: VelocitySource,
 }
 
 pub struct Engine {
@@ -34,7 +28,6 @@ impl Engine {
                 last_input_delta: Vector { dx: 0.0, dy: 0.0 },
                 velocity: Vector { dx: 0.0, dy: 0.0 },
                 is_gliding: false,
-                velocity_source: VelocitySource::Pointer,
             },
             last_physical_mouse_position: Point { x: 0.0, y: 0.0 },
             desktop_bounds: Rect::null(),
@@ -75,16 +68,13 @@ impl Engine {
         };
 
         let mut velocity = pointer_velocity;
-        let mut source: VelocitySource = VelocitySource::Pointer;
         let trackpad_velocity = self.trackpad_velocity_in_pixels(normalized_trackpad_velocity);
         if let Some(trackpad_velocity) = trackpad_velocity {
             if Self::magnitude(&trackpad_velocity) > Self::magnitude(&pointer_velocity) {
                 velocity = trackpad_velocity;
-                source = VelocitySource::Trackpad;
             }
         }
         self.state.velocity = velocity;
-        self.state.velocity_source = source;
         self.state.position.x += delta_pos.x;
         self.state.position.y += delta_pos.y;
         self.state.last_input_delta = Vector {
