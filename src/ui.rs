@@ -1,14 +1,60 @@
-use objc2::{MainThreadOnly, rc::Retained, sel};
+use objc2::{AnyThread, MainThreadOnly, define_class, msg_send, rc::Retained, sel};
 use objc2_app_kit::{
     NSApplication, NSApplicationActivationPolicy, NSBackingStoreType, NSButton, NSMenu, NSMenuItem,
     NSStatusBar, NSStatusItem, NSVariableStatusItemLength, NSView, NSWindow, NSWindowController,
     NSWindowStyleMask,
 };
-use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
+use objc2_foundation::{
+    MainThreadMarker, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString,
+};
 pub struct UI {
     pub app: Retained<NSApplication>,
     _window_controller: Retained<NSWindowController>,
     pub status_item: Retained<NSStatusItem>,
+    _button_target: Retained<ButtonTarget>,
+}
+
+/*
+poc for the work required to call a rust function from the ui. docs were very helpful.
+*/
+#[derive(Clone)]
+struct Ivars {
+    _object: Retained<NSObject>,
+}
+
+fn click() {
+    println!("clicked");
+}
+
+define_class!(
+    #[unsafe(super(NSObject))]
+    #[name = "ButtonTarget"]
+    #[ivars = Ivars]
+    struct ButtonTarget;
+
+    impl ButtonTarget {
+        #[unsafe(method(buttonClicked:))]
+        fn button_clicked(&self, _sender: &NSButton) {
+            click();
+        }
+    }
+    unsafe impl NSObjectProtocol for ButtonTarget {}
+);
+
+impl ButtonTarget {
+    fn new(_mtm: MainThreadMarker) -> Retained<Self> {
+        let this = Self::alloc().set_ivars(Ivars {
+            _object: NSObject::new(),
+        });
+        unsafe { msg_send![super(this), init] }
+    }
+}
+
+fn setup_button(button: &NSButton, target: &ButtonTarget) {
+    unsafe {
+        button.setTarget(Some(target));
+        button.setAction(Some(sel!(buttonClicked:)));
+    }
 }
 
 impl UI {
@@ -47,6 +93,9 @@ impl UI {
         let _button = NSButton::initWithFrame(button, button_rect);
         _button.setTitle(&NSString::from_str("Test"));
         _view.addSubview(&_button);
+
+        let button_target: Retained<ButtonTarget> = ButtonTarget::new(mtm);
+        setup_button(&_button, &button_target);
 
         // Status item setup
         let status_bar = NSStatusBar::systemStatusBar();
@@ -92,6 +141,7 @@ impl UI {
             app,
             _window_controller,
             status_item,
+            _button_target: button_target,
         };
     }
 }
