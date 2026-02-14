@@ -5,7 +5,7 @@ use crate::ui::{view::View, window::Window};
 
 pub struct WindowController {
     pub window_controller: Retained<NSWindowController>,
-    pub window: Window
+    pub window: Window,
 }
 
 impl WindowController {
@@ -14,7 +14,10 @@ impl WindowController {
             NSWindowController::alloc(mtm),
             Some(&window.window),
         );
-        Self { window_controller, window }
+        Self {
+            window_controller,
+            window,
+        }
     }
 
     pub fn set_title(&self, string: &str) {

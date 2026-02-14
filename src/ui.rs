@@ -1,25 +1,29 @@
 pub mod app;
 pub mod button;
+pub mod menu;
+pub mod menu_item;
+pub mod status_item;
 pub mod view;
+pub mod status_bar_button;
 pub mod window;
 pub mod window_controller;
 
-use objc2::{rc::Retained, sel};
-use objc2_app_kit::{
-    NSBackingStoreType, NSMenu, NSMenuItem, NSStatusBar, NSStatusItem, NSVariableStatusItemLength, 
-    NSWindowStyleMask,
-};
+use objc2::sel;
+use objc2_app_kit::{NSBackingStoreType, NSWindowStyleMask};
 use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
 
 use crate::{
-    ui::{app::App, button::Button, view::View, window::Window, window_controller::WindowController},
+    ui::{
+        app::App, button::Button, menu::Menu, menu_item::MenuItem, status_item::StatusItem,
+        view::View, window::Window, window_controller::WindowController,
+    },
     utils::new_nsrect,
 };
 
 pub struct UI {
     pub app: App,
     _window_controller: WindowController,
-    pub status_item: Retained<NSStatusItem>,
+    pub status_item: StatusItem,
     _buttons: Vec<Button>,
 }
 
@@ -64,45 +68,46 @@ impl UI {
         window_controller.set_content_view(view);
 
         // Status item
-        let status_bar = NSStatusBar::systemStatusBar();
-        let status_item = status_bar.statusItemWithLength(NSVariableStatusItemLength);
+        let status_item = StatusItem::new();
+
+        // Settings tab
         let settings_status_item_button = status_item
+            .status_item
             .button(mtm)
             .expect("status bar item should have a button");
         let title = NSString::from_str("⬤");
         settings_status_item_button.setTitle(&title);
-        let menu = NSMenu::new(mtm);
 
-        // Quit item
+        // Menu
+        let menu = Menu::new(mtm);
+
+        // Quit tab
         let quit_title = NSString::from_str("Quit Lapsus");
         let quit_key_equivalent = NSString::from_str("q");
-        let quit_item = unsafe {
-            menu.addItemWithTitle_action_keyEquivalent(
-                &quit_title,
-                Some(sel!(terminate:)),
-                &quit_key_equivalent,
-            )
-        };
-        unsafe { quit_item.setTarget(Some(&app.app)) };
+        let quit_item = menu.add_item_with_title_action_key_equivalent(
+            &quit_title,
+            Some(sel!(terminate:)),
+            &quit_key_equivalent,
+        );
+        quit_item.set_target(Some(&app.app));
 
-        // Divider item
-        let divider = NSMenuItem::separatorItem(mtm);
-        menu.addItem(&divider);
+        // Divider
+        let divider = MenuItem::separator_item(mtm);
+        menu.add_item(divider);
 
         // Settings item
         let settings_title = NSString::from_str("Settings");
         let settings_key_equivalent = NSString::from_str(",");
-        let settings_item = unsafe {
-            menu.addItemWithTitle_action_keyEquivalent(
-                &settings_title,
-                Some(sel!(showWindow:)),
-                &settings_key_equivalent,
-            )
-        };
-        unsafe { settings_item.setTarget(Some(&window_controller.window_controller)) };
+
+        let settings_item = menu.add_item_with_title_action_key_equivalent(
+            &settings_title,
+            Some(sel!(showWindow:)),
+            &settings_key_equivalent,
+        );
+        settings_item.set_target(Some(&window_controller.window_controller));
 
         // Initialize status item
-        status_item.setMenu(Some(&menu));
+        status_item.set_menu(menu);
         return Self {
             app,
             _window_controller: window_controller,
