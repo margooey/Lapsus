@@ -1,4 +1,4 @@
-use objc2::{MainThreadOnly, rc::Retained};
+use objc2::{rc::Retained};
 use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy};
 use objc2_foundation::MainThreadMarker;
 
@@ -8,7 +8,7 @@ pub struct App {
 
 impl App {
     pub fn new(mtm: MainThreadMarker) -> Self {
-        let app = NSApplication::init(NSApplication::alloc(mtm));
+        let app = NSApplication::sharedApplication(mtm);
         app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
         Self { app }
     }

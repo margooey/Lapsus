@@ -75,15 +75,15 @@ fn main() {
         autoreleasepool(|_pool| {
             let _ = &ui.status_item;
             let expiration = NSDate::dateWithTimeIntervalSinceNow(config().min_dt);
-            if let Some(event) = ui.app.nextEventMatchingMask_untilDate_inMode_dequeue(
+            if let Some(event) = ui.app.app.nextEventMatchingMask_untilDate_inMode_dequeue(
                 NSEventMask::Any,
                 Some(&expiration),
                 unsafe { NSDefaultRunLoopMode },
                 true,
             ) {
-                ui.app.sendEvent(&event);
+                ui.app.app.sendEvent(&event);
             }
-            ui.app.updateWindows();
+            ui.app.app.updateWindows();
             utils::disable_local_event_suppression();
             controller.update_state();
         });
