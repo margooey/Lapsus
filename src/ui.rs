@@ -1,55 +1,52 @@
 pub mod app;
-pub mod view;
 pub mod button;
+pub mod view;
+pub mod window;
+pub mod window_controller;
 
-use objc2::{MainThreadOnly, rc::Retained, sel};
+use objc2::{rc::Retained, sel};
 use objc2_app_kit::{
-    NSBackingStoreType, NSMenu, NSMenuItem,
-    NSStatusBar, NSStatusItem, NSVariableStatusItemLength, NSView, NSWindow, NSWindowController,
+    NSBackingStoreType, NSMenu, NSMenuItem, NSStatusBar, NSStatusItem, NSVariableStatusItemLength, 
     NSWindowStyleMask,
 };
-use objc2_foundation::{
-    MainThreadMarker, NSPoint, NSRect, NSSize, NSString
-};
+use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
 
-use crate::{ui::{app::App, button::Button}, utils::new_nsrect};
+use crate::{
+    ui::{app::App, button::Button, view::View, window::Window, window_controller::WindowController},
+    utils::new_nsrect,
+};
 
 pub struct UI {
     pub app: App,
-    _window_controller: Retained<NSWindowController>,
+    _window_controller: WindowController,
     pub status_item: Retained<NSStatusItem>,
-    _buttons: Vec<Button>
+    _buttons: Vec<Button>,
 }
 
 impl UI {
     pub fn initialize() -> Self {
         let mtm = MainThreadMarker::new().expect("must be on the main thread");
+        // App
         let app = App::new(mtm);
         let frame_rect = new_nsrect!(100.0, 100.0, 480.0, 480.0);
 
-        // Window setup (settings)
-        let window = NSWindow::alloc(mtm);
-        let _window = unsafe {
-            NSWindow::initWithContentRect_styleMask_backing_defer(
-                window,
-                frame_rect,
-                NSWindowStyleMask::Titled | NSWindowStyleMask::Closable,
-                NSBackingStoreType::Buffered,
-                false,
-            )
-        };
-        _window.setTitle(&NSString::from_str("Lapsus Settings"));
-        let window_controller = NSWindowController::alloc(mtm);
-        let window_controller =
-            NSWindowController::initWithWindow(window_controller, Some(&_window));
-        let _window_controller = window_controller;
+        // Window
+        let window = Window::new(
+            mtm,
+            frame_rect,
+            NSWindowStyleMask::Titled | NSWindowStyleMask::Closable,
+            NSBackingStoreType::Buffered,
+            false,
+        );
+        window.set_title("Settings");
 
-        // Content view setup
-        let view = NSView::alloc(mtm);
-        let _view = NSView::initWithFrame(view, frame_rect);
-        _window.setContentView(Some(&_view));
+        // Window Controller
+        let window_controller = WindowController::new(mtm, window);
 
-        // Settings buttons (WIP)
+        // View
+        let view = View::new(mtm, frame_rect);
+
+        // Buttons
         let mut test_button = Button::new(mtm, new_nsrect!(100.0, 100.0, 100.0, 100.0));
         let mut test_button2 = Button::new(mtm, new_nsrect!(200.0, 200.0, 100.0, 100.0));
         test_button.set_title("Test");
@@ -60,10 +57,13 @@ impl UI {
         test_button2.set_action(mtm, |_sender| {
             println!("wow");
         });
-        _view.addSubview(&test_button.button);
-        _view.addSubview(&test_button2.button);
+        view.add_subview(&test_button.button);
+        view.add_subview(&test_button2.button);
 
-        // Status item setup
+        // Set content view after adding all subviews
+        window_controller.set_content_view(view);
+
+        // Status item
         let status_bar = NSStatusBar::systemStatusBar();
         let status_item = status_bar.statusItemWithLength(NSVariableStatusItemLength);
         let settings_status_item_button = status_item
@@ -99,13 +99,13 @@ impl UI {
                 &settings_key_equivalent,
             )
         };
-        unsafe { settings_item.setTarget(Some(&_window_controller)) };
+        unsafe { settings_item.setTarget(Some(&window_controller.window_controller)) };
 
         // Initialize status item
         status_item.setMenu(Some(&menu));
         return Self {
             app,
-            _window_controller,
+            _window_controller: window_controller,
             status_item,
             _buttons: vec![test_button, test_button2],
         };

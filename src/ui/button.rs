@@ -1,13 +1,12 @@
 /*
-    Warning, this implementation is of my own design, but was implemented with help from an LLM.
-    I haven't fully reviewed this in depth, but it does work so it's going to stay for now.
-    WIP, but basically abstracts the need to create a class for each button manually in order
-    to set a target and action on click.
- */
+   Warning, this implementation is of my own design, but was implemented with help from an LLM.
+   I haven't fully reviewed this in depth, but it does work so it's going to stay for now.
+   WIP, but basically abstracts the need to create a class for each button manually in order
+   to set a target and action on click.
+*/
 use objc2::{AnyThread, DefinedClass, MainThreadOnly, define_class, msg_send, rc::Retained, sel};
 use objc2_app_kit::NSButton;
-use objc2_core_foundation::CGRect;
-use objc2_foundation::{MainThreadMarker, NSObject, NSObjectProtocol, NSString};
+use objc2_foundation::{MainThreadMarker, NSObject, NSObjectProtocol, NSRect, NSString};
 
 struct ActionIvars {
     callback: Box<dyn Fn(&NSButton) + 'static>,
@@ -47,7 +46,7 @@ pub struct Button {
 }
 
 impl Button {
-    pub fn new(mtm: MainThreadMarker, rect: CGRect) -> Self {
+    pub fn new(mtm: MainThreadMarker, rect: NSRect) -> Self {
         let button = NSButton::initWithFrame(NSButton::alloc(mtm), rect);
         Self {
             button,

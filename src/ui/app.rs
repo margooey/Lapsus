@@ -1,4 +1,4 @@
-use objc2::{rc::Retained};
+use objc2::rc::Retained;
 use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy};
 use objc2_foundation::MainThreadMarker;
 
