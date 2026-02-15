@@ -34,7 +34,7 @@ impl UI {
         let mtm = MainThreadMarker::new().expect("must be on the main thread");
         // App
         let app = App::new(mtm);
-        app.app.activate();
+        app.activate();
         // Window
         let window = Window::new(
             mtm,
@@ -44,7 +44,7 @@ impl UI {
             false,
         );
         window.set_title("Settings");
-        window.window.center();
+        window.center();
 
         // View
         let view = View::from_nsview(

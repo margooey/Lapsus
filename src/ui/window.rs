@@ -35,4 +35,8 @@ impl Window {
     pub fn set_content_view(&self, view: View) {
         self.window.setContentView(Some(&view.view))
     }
+
+    pub fn center(&self) {
+        self.window.center();
+    }
 }

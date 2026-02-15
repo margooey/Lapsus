@@ -12,4 +12,7 @@ impl App {
         app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
         Self { app }
     }
+    pub fn activate(&self) {
+        self.app.activate();
+    }
 }
