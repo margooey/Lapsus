@@ -14,4 +14,7 @@ impl View {
     pub fn add_subview(&self, view: &NSView) {
         self.view.addSubview(view);
     }
+    pub fn from_nsview(view: Retained<NSView>) -> Self {
+        Self { view }
+    }
 }

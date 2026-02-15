@@ -33,23 +33,21 @@ impl UI {
         let mtm = MainThreadMarker::new().expect("must be on the main thread");
         // App
         let app = App::new(mtm);
-        let frame_rect = new_nsrect!(100.0, 100.0, 480.0, 480.0);
-
         // Window
         let window = Window::new(
             mtm,
-            frame_rect,
+            new_nsrect!(0.0, 0.0, 600.0, 400.0),
             NSWindowStyleMask::Titled | NSWindowStyleMask::Closable,
             NSBackingStoreType::Buffered,
             false,
         );
         window.set_title("Settings");
 
+        // View
+        let view = View::from_nsview(window.window.contentView().expect("window should have a content view"));
+
         // Window Controller
         let window_controller = WindowController::new(mtm, window);
-
-        // View
-        let view = View::new(mtm, frame_rect);
 
         // Buttons
         let mut test_button = Button::new(mtm, new_nsrect!(100.0, 100.0, 100.0, 100.0));
