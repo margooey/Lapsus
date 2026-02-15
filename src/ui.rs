@@ -2,9 +2,9 @@ pub mod app;
 pub mod button;
 pub mod menu;
 pub mod menu_item;
+pub mod status_bar_button;
 pub mod status_item;
 pub mod view;
-pub mod status_bar_button;
 pub mod window;
 pub mod window_controller;
 
@@ -14,8 +14,9 @@ use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
 
 use crate::{
     ui::{
-        app::App, button::Button, menu::Menu, menu_item::MenuItem, status_item::StatusItem,
-        view::View, window::Window, window_controller::WindowController,
+        app::App, button::Button, menu::Menu, menu_item::MenuItem,
+        status_bar_button::StatusBarButton, status_item::StatusItem, view::View, window::Window,
+        window_controller::WindowController,
     },
     utils::new_nsrect,
 };
@@ -70,13 +71,9 @@ impl UI {
         // Status item
         let status_item = StatusItem::new();
 
-        // Settings tab
-        let settings_status_item_button = status_item
-            .status_item
-            .button(mtm)
-            .expect("status bar item should have a button");
-        let title = NSString::from_str("⬤");
-        settings_status_item_button.setTitle(&title);
+        // Settings bar button
+        let status_bar_button = StatusBarButton::new(mtm, &status_item);
+        status_bar_button.set_title("⬤");
 
         // Menu
         let menu = Menu::new(mtm);
