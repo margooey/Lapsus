@@ -2,6 +2,7 @@ pub mod app;
 pub mod button;
 pub mod menu;
 pub mod menu_item;
+pub mod slider;
 pub mod status_bar_button;
 pub mod status_item;
 pub mod view;
@@ -33,6 +34,7 @@ impl UI {
         let mtm = MainThreadMarker::new().expect("must be on the main thread");
         // App
         let app = App::new(mtm);
+        app.app.activate();
         // Window
         let window = Window::new(
             mtm,
@@ -42,22 +44,28 @@ impl UI {
             false,
         );
         window.set_title("Settings");
+        window.window.center();
 
         // View
-        let view = View::from_nsview(window.window.contentView().expect("window should have a content view"));
+        let view = View::from_nsview(
+            window
+                .window
+                .contentView()
+                .expect("window should have a content view"),
+        );
 
         // Window Controller
         let window_controller = WindowController::new(mtm, window);
 
         // Buttons
-        let mut test_button = Button::new(mtm, new_nsrect!(100.0, 100.0, 100.0, 100.0));
-        let mut test_button2 = Button::new(mtm, new_nsrect!(200.0, 200.0, 100.0, 100.0));
+        let mut test_button = Button::new(mtm, new_nsrect!(40.0, 40.0, 100.0, 100.0));
+        let mut test_button2 = Button::new(mtm, new_nsrect!(180.0, 40.0, 100.0, 100.0));
         test_button.set_title("Test");
-        test_button.set_action(mtm, |_sender| {
+        test_button.set_action(mtm, |_| {
             println!("clicked");
         });
         test_button2.set_title("Test 2");
-        test_button2.set_action(mtm, |_sender| {
+        test_button2.set_action(mtm, |_| {
             println!("wow");
         });
         view.add_subview(&test_button.button);
