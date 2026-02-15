@@ -79,12 +79,10 @@ impl UI {
         let menu = Menu::new(mtm);
 
         // Quit tab
-        let quit_title = NSString::from_str("Quit Lapsus");
-        let quit_key_equivalent = NSString::from_str("q");
         let quit_item = menu.add_item_with_title_action_key_equivalent(
-            &quit_title,
+            &NSString::from_str("Quit Lapsus"),
             Some(sel!(terminate:)),
-            &quit_key_equivalent,
+            &NSString::from_str("q"),
         );
         quit_item.set_target(Some(&app.app));
 
@@ -93,13 +91,10 @@ impl UI {
         menu.add_item(divider);
 
         // Settings item
-        let settings_title = NSString::from_str("Settings");
-        let settings_key_equivalent = NSString::from_str(",");
-
         let settings_item = menu.add_item_with_title_action_key_equivalent(
-            &settings_title,
+            &NSString::from_str("Settings"),
             Some(sel!(showWindow:)),
-            &settings_key_equivalent,
+            &NSString::from_str(","),
         );
         settings_item.set_target(Some(&window_controller.window_controller));
 
