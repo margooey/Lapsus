@@ -36,3 +36,11 @@ pub fn disable_local_event_suppression() {
         EventSrc::set_local_events_suppression_interval(retained, 0.0);
     }
 }
+
+// My first rust macro. I got tired of writing "NSRect::new(NSPoint::new..."
+macro_rules! new_nsrect {
+    ($a:expr, $b:expr, $c:expr, $d:expr) => {
+        NSRect::new(NSPoint::new($a, $b), NSSize::new($c, $d))
+    };
+}
+pub(crate) use new_nsrect;

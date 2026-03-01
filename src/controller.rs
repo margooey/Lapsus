@@ -1,5 +1,6 @@
+use crate::config::config;
 use crate::utils::{max, union_rect};
-use crate::{config, engine, trackpad};
+use crate::{engine, trackpad};
 use cidre::cg::{Float, Point, Rect, Size, Vector};
 
 pub struct Controller {
@@ -74,7 +75,8 @@ impl Controller {
 
     pub fn update_state(&mut self) {
         let now = objc2_core_foundation::CFAbsoluteTimeGetCurrent();
-        let delta_seconds = max(now - self.last_update_timestamp, config().min_dt);
+        let min_dt = config().min_dt;
+        let delta_seconds = max(now - self.last_update_timestamp, min_dt);
         self.last_update_timestamp = now;
         let delta_time = delta_seconds;
         let ns_mouse_location = objc2_app_kit::NSEvent::mouseLocation();

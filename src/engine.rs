@@ -1,14 +1,9 @@
-use crate::{config, utils::max};
+use crate::{config::config, utils::max};
 use cidre::cg::{Float, Point, Rect, Vector};
 use core_graphics::display;
 use objc2_app_kit::NSScreen;
 
 pub const ZERO_VECTOR: Vector = Vector { dx: 0.0, dy: 0.0 };
-
-enum VelocitySource {
-    Pointer,
-    Trackpad,
-}
 
 pub struct State {
     position: Point,
@@ -16,7 +11,6 @@ pub struct State {
     last_input_delta: Vector,
     velocity: Vector,
     pub is_gliding: bool,
-    velocity_source: VelocitySource,
 }
 
 pub struct Engine {
@@ -34,7 +28,6 @@ impl Engine {
                 last_input_delta: Vector { dx: 0.0, dy: 0.0 },
                 velocity: Vector { dx: 0.0, dy: 0.0 },
                 is_gliding: false,
-                velocity_source: VelocitySource::Pointer,
             },
             last_physical_mouse_position: Point { x: 0.0, y: 0.0 },
             desktop_bounds: Rect::null(),
@@ -75,16 +68,13 @@ impl Engine {
         };
 
         let mut velocity = pointer_velocity;
-        let mut source: VelocitySource = VelocitySource::Pointer;
         let trackpad_velocity = self.trackpad_velocity_in_pixels(normalized_trackpad_velocity);
         if let Some(trackpad_velocity) = trackpad_velocity {
             if Self::magnitude(&trackpad_velocity) > Self::magnitude(&pointer_velocity) {
                 velocity = trackpad_velocity;
-                source = VelocitySource::Trackpad;
             }
         }
         self.state.velocity = velocity;
-        self.state.velocity_source = source;
         self.state.position.x += delta_pos.x;
         self.state.position.y += delta_pos.y;
         self.state.last_input_delta = Vector {
@@ -140,8 +130,8 @@ impl Engine {
     }
 
     pub fn apply_momentum(&mut self, delta_time: Float) {
-        let config = config();
-        let decay_factor = max(0.0, 1.0 - config.glide_decay_per_second * delta_time);
+        let glide_decay_per_second = config().glide_decay_per_second;
+        let decay_factor = max(0.0, 1.0 - glide_decay_per_second * delta_time);
         self.state.velocity.dx *= decay_factor;
         self.state.velocity.dy *= decay_factor;
 
@@ -158,6 +148,7 @@ impl Engine {
         self.update_cursor_position_on_screen();
 
         let speed = Self::magnitude(&self.state.velocity);
+        let config = config();
         if speed < config.minimum_glide_velocity * config.glide_stop_speed_factor {
             self.set_gliding(false);
             self.state.velocity = ZERO_VECTOR;
@@ -211,11 +202,11 @@ impl Engine {
         &mut self,
         normalized_velocity: Option<Vector>,
     ) -> Option<Vector> {
-        let config = config();
         if self.desktop_bounds == Rect::null() {
             return None;
         }
         if let Some(normalized_velocity) = normalized_velocity {
+            let config = config();
             let scaled = Vector {
                 dx: normalized_velocity.dx
                     * self.desktop_bounds.size.width

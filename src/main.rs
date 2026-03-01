@@ -1,114 +1,109 @@
+pub mod config;
 pub mod controller;
 pub mod engine;
 pub mod tests;
 pub mod trackpad;
+pub mod ui;
 pub mod utils;
 
-use cidre::cg::Float;
-use objc2::rc::autoreleasepool;
-use objc2::sel;
-use objc2_app_kit::{
-    NSApplication, NSApplicationActivationPolicy, NSEventMask, NSMenu, NSStatusBar,
-    NSVariableStatusItemLength,
+use std::cell::RefCell;
+
+use objc2::{
+    ClassType, DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send,
+    rc::{Allocated, Retained},
+    runtime::ProtocolObject,
+    sel,
 };
-use objc2_foundation::{MainThreadMarker, NSDate, NSDefaultRunLoopMode, NSString};
-use std::env;
-use std::sync::OnceLock;
+use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationDelegate};
+use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSTimer};
 
-pub struct Config {
-    maximum_momentum_speed: f64,
-    trackpad_velocity_gain: f64,
-    glide_decay_per_second: f64,
-    minimum_glide_velocity: f64,
-    glide_stop_speed_factor: f64,
-    velocity_smoothing: f64,
-    min_dt: f64,
-    multi_finger_suppression_deadline: f64,
+use crate::{
+    config::{config, init_config},
+    controller::Controller,
+    ui::UI,
+};
+
+// https://docs.rs/objc2/latest/objc2/topics/run_loop/index.html#graphical-applications
+struct AppState {
+    ui: RefCell<Option<UI>>,
+    controller: RefCell<Option<Controller>>,
+    timer: RefCell<Option<Retained<NSTimer>>>,
 }
 
-static CONFIG: OnceLock<Config> = OnceLock::new();
+define_class!(
+    #[unsafe(super(NSObject))]
+    #[thread_kind = MainThreadOnly]
+    #[ivars = AppState]
+    struct AppDelegate;
 
-pub fn config() -> &'static Config {
-    CONFIG.get_or_init(|| Config {
-        maximum_momentum_speed: env!("MAXIMUM_MOMENTUM_SPEED").parse::<Float>().unwrap(),
-        trackpad_velocity_gain: env!("TRACKPAD_VELOCITY_GAIN").parse::<Float>().unwrap(),
-        glide_decay_per_second: env!("GLIDE_DECAY_PER_SECOND").parse::<Float>().unwrap(),
-        minimum_glide_velocity: env!("MINIMUM_GLIDE_VELOCITY").parse::<Float>().unwrap(),
-        glide_stop_speed_factor: env!("GLIDE_STOP_SPEED_FACTOR").parse::<Float>().unwrap(),
-        velocity_smoothing: env!("VELOCITY_SMOOTHING").parse::<Float>().unwrap(),
-        min_dt: env!("MIN_DT").parse::<Float>().unwrap(),
-        multi_finger_suppression_deadline: env!("MULTI_FINGER_SUPPRESSION_DEADLINE")
-            .parse::<f64>()
-            .unwrap(),
-    })
-}
+    impl AppDelegate {
+        #[unsafe(method_id(init))]
+        fn init(this: Allocated<Self>) -> Retained<Self> {
+            let this = this.set_ivars(AppState {
+                ui: RefCell::new(None),
+                controller: RefCell::new(None),
+                timer: RefCell::new(None),
+            });
+            unsafe { msg_send![super(this), init] }
+        }
+
+        #[unsafe(method(tick:))]
+        fn tick(&self, _timer: &NSTimer) {
+            utils::disable_local_event_suppression();
+
+            if let Some(controller) = self.ivars().controller.borrow_mut().as_mut() {
+                controller.update_state();
+            }
+        }
+    }
+
+    unsafe impl NSObjectProtocol for AppDelegate {}
+
+    unsafe impl NSApplicationDelegate for AppDelegate {
+        #[unsafe(method(applicationDidFinishLaunching:))]
+        fn application_did_finish_launching(&self, _notification: &NSNotification)  {
+            let _mtm = MainThreadMarker::new().expect("must be on the main thread");
+            let ui = UI::initialize();
+            let mut controller = Controller::new();
+            controller.start();
+            let min_dt = config().min_dt;
+
+            let timer = unsafe {
+                NSTimer::scheduledTimerWithTimeInterval_target_selector_userInfo_repeats(
+                    min_dt,
+                    self,
+                    sel!(tick:),
+                    None,
+                    true,
+                )
+            };
+
+            *self.ivars().ui.borrow_mut() = Some(ui);
+            *self.ivars().controller.borrow_mut() = Some(controller);
+            *self.ivars().timer.borrow_mut() = Some(timer);
+        }
+
+        #[unsafe(method(applicationWillTerminate:))]
+        fn application_will_terminate(&self, _notification: &NSNotification) {
+            if let Some(timer) = self.ivars().timer.borrow_mut().take() {
+                timer.invalidate();
+            }
+
+            if let Some(controller) = self.ivars().controller.borrow_mut().as_mut() {
+                controller.stop();
+            }
+        }
+    }
+);
+
 fn main() {
-    // Disabling logging for now until MacOS bundle support is complete
-    /*
-    use std::fs::File;
-    use std::io::Write;
-    
-    let target = Box::new(File::create("lapsus_log.txt").expect("Can't create file"));
-
-    env_logger::Builder::new()
-        .target(env_logger::Target::Pipe(target))
-        .filter(None, LevelFilter::Info)
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "[{} {} {}:{}] {}",
-                Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
-                record.level(),
-                record.file().unwrap_or("unknown"),
-                record.line().unwrap_or(0),
-                record.args()
-            )
-        })
-        .init();*/
+    init_config();
 
     let mtm = MainThreadMarker::new().expect("must be on the main thread");
     let app = NSApplication::sharedApplication(mtm);
     app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
 
-    let status_bar = NSStatusBar::systemStatusBar();
-    let status_item = status_bar.statusItemWithLength(NSVariableStatusItemLength);
-    let button = status_item
-        .button(mtm)
-        .expect("status bar item should have a button");
-    let title = NSString::from_str("⬤");
-    button.setTitle(&title);
-    let menu = NSMenu::new(mtm);
-    let quit_title = NSString::from_str("Quit Lapsus");
-    let key_equivalent = NSString::from_str("q");
-    let quit_item = unsafe {
-        menu.addItemWithTitle_action_keyEquivalent(
-            &quit_title,
-            Some(sel!(terminate:)),
-            &key_equivalent,
-        )
-    };
-    unsafe { quit_item.setTarget(Some(&app)) };
-    status_item.setMenu(Some(&menu));
-    let _status_item = status_item;
-
-    let mut controller = controller::Controller::new();
-    controller.start();
-
-    loop {
-        autoreleasepool(|_pool| {
-            let _ = &_status_item;
-            let expiration = NSDate::dateWithTimeIntervalSinceNow(config().min_dt);
-            if let Some(event) = app.nextEventMatchingMask_untilDate_inMode_dequeue(
-                NSEventMask::Any,
-                Some(&expiration),
-                unsafe { NSDefaultRunLoopMode },
-                true,
-            ) {
-                app.sendEvent(&event);
-            }
-            app.updateWindows();
-            utils::disable_local_event_suppression();
-            controller.update_state();
-        });
-    }
+    let delegate: Retained<AppDelegate> = unsafe { msg_send![AppDelegate::class(), new] };
+    app.setDelegate(Some(ProtocolObject::from_ref(&*delegate)));
+    app.run();
 }
