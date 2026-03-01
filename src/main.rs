@@ -5,12 +5,18 @@ pub mod trackpad;
 pub mod ui;
 pub mod utils;
 
-use objc2::rc::autoreleasepool;
-use objc2_app_kit::NSEventMask;
-use objc2_foundation::{NSDate, NSDefaultRunLoopMode};
-use std::{env, sync::OnceLock};
+use std::{cell::RefCell, env, sync::OnceLock};
 
-use crate::ui::UI;
+use objc2::{
+    ClassType, DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send,
+    rc::{Allocated, Retained},
+    runtime::ProtocolObject,
+    sel,
+};
+use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationDelegate};
+use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSTimer};
+
+use crate::{controller::Controller, ui::UI};
 
 pub struct Config {
     maximum_momentum_speed: f64,
@@ -39,53 +45,85 @@ pub fn config() -> &'static Config {
             .unwrap(),
     })
 }
-fn main() {
-    // Disabling logging for now until MacOS bundle support is complete
-    /*
-    use std::fs::File;
-    use std::io::Write;
 
-    let target = Box::new(File::create("lapsus_log.txt").expect("Can't create file"));
+// https://docs.rs/objc2/latest/objc2/topics/run_loop/index.html#graphical-applications
+struct AppState {
+    ui: RefCell<Option<UI>>,
+    controller: RefCell<Option<Controller>>,
+    timer: RefCell<Option<Retained<NSTimer>>>,
+}
 
-    env_logger::Builder::new()
-        .target(env_logger::Target::Pipe(target))
-        .filter(None, LevelFilter::Info)
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "[{} {} {}:{}] {}",
-                Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
-                record.level(),
-                record.file().unwrap_or("unknown"),
-                record.line().unwrap_or(0),
-                record.args()
-            )
-        })
-        .init();*/
+define_class!(
+    #[unsafe(super(NSObject))]
+    #[thread_kind = MainThreadOnly]
+    #[ivars = AppState]
+    struct AppDelegate;
 
-    // UI setup
-    let ui = UI::initialize();
+    impl AppDelegate {
+        #[unsafe(method_id(init))]
+        fn init(this: Allocated<Self>) -> Retained<Self> {
+            let this = this.set_ivars(AppState {
+                ui: RefCell::new(None),
+                controller: RefCell::new(None),
+                timer: RefCell::new(None),
+            });
+            unsafe { msg_send![super(this), init] }
+        }
 
-    // Controller setup
-    let mut controller = controller::Controller::new();
-    controller.start();
-
-    loop {
-        // Update the cursor state and drain the autoreleasepool on every tick (default MIN_DT = 200Hz)
-        autoreleasepool(|_pool| {
-            let _ = &ui.status_item;
-            let expiration = NSDate::dateWithTimeIntervalSinceNow(config().min_dt);
-            if let Some(event) = ui.app.app.nextEventMatchingMask_untilDate_inMode_dequeue(
-                NSEventMask::Any,
-                Some(&expiration),
-                unsafe { NSDefaultRunLoopMode },
-                true,
-            ) {
-                ui.app.app.sendEvent(&event);
-            }
-            ui.app.app.updateWindows();
+        #[unsafe(method(tick:))]
+        fn tick(&self, _timer: &NSTimer) {
             utils::disable_local_event_suppression();
-            controller.update_state();
-        });
+
+            if let Some(controller) = self.ivars().controller.borrow_mut().as_mut() {
+                controller.update_state();
+            }
+        }
     }
+
+    unsafe impl NSObjectProtocol for AppDelegate {}
+
+    unsafe impl NSApplicationDelegate for AppDelegate {
+        #[unsafe(method(applicationDidFinishLaunching:))]
+        fn application_did_finish_launching(&self, _notification: &NSNotification) {
+            let _mtm = MainThreadMarker::new().expect("must be on the main thread");
+            let ui = UI::initialize();
+            let mut controller = Controller::new();
+            controller.start();
+
+            let timer = unsafe {
+                NSTimer::scheduledTimerWithTimeInterval_target_selector_userInfo_repeats(
+                    config().min_dt,
+                    self,
+                    sel!(tick:),
+                    None,
+                    true,
+                )
+            };
+
+            *self.ivars().ui.borrow_mut() = Some(ui);
+            *self.ivars().controller.borrow_mut() = Some(controller);
+            *self.ivars().timer.borrow_mut() = Some(timer);
+        }
+
+        #[unsafe(method(applicationWillTerminate:))]
+        fn application_will_terminate(&self, _notification: &NSNotification) {
+            if let Some(timer) = self.ivars().timer.borrow_mut().take() {
+                timer.invalidate();
+            }
+
+            if let Some(controller) = self.ivars().controller.borrow_mut().as_mut() {
+                controller.stop();
+            }
+        }
+    }
+);
+
+fn main() {
+    let mtm = MainThreadMarker::new().expect("must be on the main thread");
+    let app = NSApplication::sharedApplication(mtm);
+    app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
+
+    let delegate: Retained<AppDelegate> = unsafe { msg_send![AppDelegate::class(), new] };
+    app.setDelegate(Some(ProtocolObject::from_ref(&*delegate)));
+    app.run();
 }

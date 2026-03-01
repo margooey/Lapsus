@@ -1,5 +1,6 @@
 pub mod app;
 pub mod button;
+pub mod grid_view;
 pub mod menu;
 pub mod menu_item;
 pub mod slider;
@@ -9,21 +10,20 @@ pub mod view;
 pub mod window;
 pub mod window_controller;
 
-use objc2::sel;
+use objc2::{ClassType, sel};
 use objc2_app_kit::{NSBackingStoreType, NSWindowStyleMask};
 use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
 
 use crate::{
     ui::{
-        app::App, button::Button, menu::Menu, menu_item::MenuItem,
-        status_bar_button::StatusBarButton, status_item::StatusItem, view::View, window::Window,
+        app::App, button::Button, grid_view::GridView, menu::Menu, menu_item::MenuItem,
+        status_bar_button::StatusBarButton, status_item::StatusItem, window::Window,
         window_controller::WindowController,
     },
     utils::new_nsrect,
 };
 
 pub struct UI {
-    pub app: App,
     _window_controller: WindowController,
     pub status_item: StatusItem,
     _buttons: Vec<Button>,
@@ -35,6 +35,7 @@ impl UI {
         // App
         let app = App::new(mtm);
         app.activate();
+
         // Window
         let window = Window::new(
             mtm,
@@ -45,14 +46,6 @@ impl UI {
         );
         window.set_title("Settings");
         window.center();
-
-        // View
-        let view = View::from_nsview(
-            window
-                .window
-                .contentView()
-                .expect("window should have a content view"),
-        );
 
         // Window Controller
         let window_controller = WindowController::new(mtm, window);
@@ -68,11 +61,24 @@ impl UI {
         test_button2.set_action(mtm, |_| {
             println!("wow");
         });
-        view.add_subview(&test_button.button);
-        view.add_subview(&test_button2.button);
+
+        let buttons = vec![test_button, test_button2];
+
+        // View
+        let content_view = window_controller.window.window.contentView().expect("…");
+
+        // Grid View
+        let grid_view = GridView::new(mtm, content_view.bounds());
+        // TODO: Allow passing in arbitrary objects that have an NSView superclass (.as_view())
+        grid_view.add_row_with_views(&[buttons[0].button.as_super(), buttons[1].button.as_super()]);
+
+        grid_view.set_column_spacing(10.0);
+        grid_view.set_row_spacing(10.0);
 
         // Set content view after adding all subviews
-        window_controller.set_content_view(view);
+        window_controller
+            .window
+            .set_content_view(GridView::as_view(&grid_view));
 
         // Status item
         let status_item = StatusItem::new();
@@ -107,10 +113,9 @@ impl UI {
         // Initialize status item
         status_item.set_menu(menu);
         return Self {
-            app,
             _window_controller: window_controller,
             status_item,
-            _buttons: vec![test_button, test_button2],
+            _buttons: buttons,
         };
     }
 }
