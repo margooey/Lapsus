@@ -54,14 +54,15 @@ impl UI {
         // Buttons
         let mut test_button = Button::new(mtm, new_nsrect!(40.0, 40.0, 100.0, 100.0));
         let mut test_button2 = Button::new(mtm, new_nsrect!(180.0, 40.0, 100.0, 100.0));
-        test_button.set_title("Test");
+        test_button.set_title("Stop");
         test_button.set_action(mtm, |_| {
             config().min_dt = 1.0;
             print!("set min_dt to 1.0")
         });
-        test_button2.set_title("Test 2");
+        test_button2.set_title("Start");
         test_button2.set_action(mtm, |_| {
-            println!("wow");
+            config().min_dt = 0.005;
+            println!("set min_dt to 0.005");
         });
 
         let buttons = vec![test_button, test_button2];
