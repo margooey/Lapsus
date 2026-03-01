@@ -15,12 +15,11 @@ use objc2_app_kit::{NSBackingStoreType, NSWindowStyleMask};
 use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
 
 use crate::{
-    ui::{
+    config, ui::{
         app::App, button::Button, grid_view::GridView, menu::Menu, menu_item::MenuItem,
         status_bar_button::StatusBarButton, status_item::StatusItem, window::Window,
         window_controller::WindowController,
-    },
-    utils::new_nsrect,
+    }, utils::new_nsrect
 };
 
 pub struct UI {
@@ -55,7 +54,8 @@ impl UI {
         let mut test_button2 = Button::new(mtm, new_nsrect!(180.0, 40.0, 100.0, 100.0));
         test_button.set_title("Test");
         test_button.set_action(mtm, |_| {
-            println!("clicked");
+            config().min_dt = 1.0;
+            print!("set min_dt to 1.0")
         });
         test_button2.set_title("Test 2");
         test_button2.set_action(mtm, |_| {

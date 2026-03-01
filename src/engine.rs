@@ -1,4 +1,4 @@
-use crate::{config, utils::max};
+use crate::{config::config, utils::max};
 use cidre::cg::{Float, Point, Rect, Vector};
 use core_graphics::display;
 use objc2_app_kit::NSScreen;
@@ -130,8 +130,8 @@ impl Engine {
     }
 
     pub fn apply_momentum(&mut self, delta_time: Float) {
-        let config = config();
-        let decay_factor = max(0.0, 1.0 - config.glide_decay_per_second * delta_time);
+        let glide_decay_per_second = config().glide_decay_per_second;
+        let decay_factor = max(0.0, 1.0 - glide_decay_per_second * delta_time);
         self.state.velocity.dx *= decay_factor;
         self.state.velocity.dy *= decay_factor;
 
@@ -148,6 +148,7 @@ impl Engine {
         self.update_cursor_position_on_screen();
 
         let speed = Self::magnitude(&self.state.velocity);
+        let config = config();
         if speed < config.minimum_glide_velocity * config.glide_stop_speed_factor {
             self.set_gliding(false);
             self.state.velocity = ZERO_VECTOR;
@@ -201,11 +202,11 @@ impl Engine {
         &mut self,
         normalized_velocity: Option<Vector>,
     ) -> Option<Vector> {
-        let config = config();
         if self.desktop_bounds == Rect::null() {
             return None;
         }
         if let Some(normalized_velocity) = normalized_velocity {
+            let config = config();
             let scaled = Vector {
                 dx: normalized_velocity.dx
                     * self.desktop_bounds.size.width

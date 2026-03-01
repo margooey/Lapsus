@@ -1,6 +1,6 @@
 // warning: a lot of this is llm code, but some attempted optimizations have been made by me to make it a little better
 
-use crate::{config, engine::ZERO_VECTOR};
+use crate::{config::config, engine::ZERO_VECTOR};
 use cidre::cg::{Float, Point, Vector};
 use macos_multitouch::{self, MultitouchDevice};
 use std::mem;
