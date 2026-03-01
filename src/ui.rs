@@ -15,11 +15,13 @@ use objc2_app_kit::{NSBackingStoreType, NSWindowStyleMask};
 use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
 
 use crate::{
-    config, ui::{
+    config,
+    ui::{
         app::App, button::Button, grid_view::GridView, menu::Menu, menu_item::MenuItem,
         status_bar_button::StatusBarButton, status_item::StatusItem, window::Window,
         window_controller::WindowController,
-    }, utils::new_nsrect
+    },
+    utils::new_nsrect,
 };
 
 pub struct UI {

@@ -6,7 +6,7 @@ pub mod trackpad;
 pub mod ui;
 pub mod utils;
 
-use std::{cell::RefCell};
+use std::cell::RefCell;
 
 use objc2::{
     ClassType, DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send,
@@ -17,7 +17,11 @@ use objc2::{
 use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationDelegate};
 use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSTimer};
 
-use crate::{config::{config, init_config}, controller::Controller, ui::UI};
+use crate::{
+    config::{config, init_config},
+    controller::Controller,
+    ui::UI,
+};
 
 // https://docs.rs/objc2/latest/objc2/topics/run_loop/index.html#graphical-applications
 struct AppState {
