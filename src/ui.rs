@@ -10,9 +10,9 @@ pub mod view;
 pub mod window;
 pub mod window_controller;
 
-use objc2::{ClassType, sel};
+use objc2::{ClassType, MainThreadOnly, sel};
 use objc2_app_kit::{
-    NSBackingStoreType, NSGridCellPlacement, NSLayoutConstraint, NSWindowStyleMask,
+    NSBackingStoreType, NSGridCellPlacement, NSLayoutConstraint, NSTextField, NSView, NSWindowStyleMask
 };
 use objc2_foundation::{MainThreadMarker, NSArray, NSPoint, NSRect, NSSize, NSString};
 
@@ -42,6 +42,7 @@ impl UI {
         let mtm = MainThreadMarker::new().expect("must be on the main thread");
         // App
         let app = App::new(mtm);
+        let mut views: Vec<&NSView> = vec![];
         app.activate();
 
         // Window
@@ -71,8 +72,16 @@ impl UI {
             config().min_dt = 0.005; // Enable
             println!("set min_dt to 0.005");
         });
+        views.push(&test_button.button);
+        views.push(&test_button2.button);
 
-        let buttons = vec![test_button, test_button2];
+        // Label
+        // TODO: Abstract label into its own wrapper
+        let label = NSTextField::init(NSTextField::alloc(mtm));
+        label.setStringValue(&NSString::from_str("Test Label"));
+        label.setEditable(false);
+        label.setBordered(false);
+        views.push(&label);
 
         // View
         let content_view = window_controller
@@ -84,7 +93,7 @@ impl UI {
         // Grid View
         let grid_view = GridView::new(mtm, ZERO_RECT);
         // TODO: Allow passing in arbitrary objects that have an NSView superclass (.as_view())
-        grid_view.add_row_with_views(&[buttons[0].button.as_super(), buttons[1].button.as_super()]);
+        grid_view.add_row_with_views(&views);
 
         grid_view.set_x_placeholder(NSGridCellPlacement::Leading);
         grid_view.set_translates_autoresizing_mask_into_constraints(false);
@@ -141,7 +150,7 @@ impl UI {
         return Self {
             _window_controller: window_controller,
             status_item,
-            _buttons: buttons,
+            _buttons: vec![test_button, test_button2],
         };
     }
 }
