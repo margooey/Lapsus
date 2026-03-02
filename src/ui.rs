@@ -6,13 +6,14 @@ pub mod menu_item;
 pub mod slider;
 pub mod status_bar_button;
 pub mod status_item;
+pub mod text_field;
 pub mod view;
 pub mod window;
 pub mod window_controller;
 
-use objc2::{ClassType, MainThreadOnly, sel};
+use objc2::{ClassType, sel};
 use objc2_app_kit::{
-    NSBackingStoreType, NSGridCellPlacement, NSLayoutConstraint, NSTextField, NSView, NSWindowStyleMask
+    NSBackingStoreType, NSGridCellPlacement, NSLayoutConstraint, NSView, NSWindowStyleMask,
 };
 use objc2_foundation::{MainThreadMarker, NSArray, NSPoint, NSRect, NSSize, NSString};
 
@@ -25,8 +26,8 @@ use crate::{
     config,
     ui::{
         app::App, button::Button, grid_view::GridView, menu::Menu, menu_item::MenuItem,
-        status_bar_button::StatusBarButton, status_item::StatusItem, window::Window,
-        window_controller::WindowController,
+        status_bar_button::StatusBarButton, status_item::StatusItem, text_field::TextField,
+        window::Window, window_controller::WindowController,
     },
     utils::new_nsrect,
 };
@@ -76,12 +77,11 @@ impl UI {
         views.push(&test_button2.button);
 
         // Label
-        // TODO: Abstract label into its own wrapper
-        let label = NSTextField::init(NSTextField::alloc(mtm));
-        label.setStringValue(&NSString::from_str("Test Label"));
-        label.setEditable(false);
-        label.setBordered(false);
-        views.push(&label);
+        let label = TextField::init(mtm);
+        label.set_string_value("Test Label");
+        label.set_editable(false);
+        label.set_bordered(false);
+        views.push(&label.text_field);
 
         // View
         let content_view = window_controller
