@@ -11,8 +11,15 @@ pub mod window;
 pub mod window_controller;
 
 use objc2::{ClassType, sel};
-use objc2_app_kit::{NSBackingStoreType, NSGridCellPlacement, NSWindowStyleMask};
-use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
+use objc2_app_kit::{
+    NSBackingStoreType, NSGridCellPlacement, NSLayoutConstraint, NSWindowStyleMask,
+};
+use objc2_foundation::{NSArray, MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
+
+const ZERO_RECT: NSRect = new_nsrect!(0.0,0.0,0.0,0.0);
+const BUTTON_OFFSET: f64 = 10.0;
+const GRID_SPACING: f64 = 10.0;
+const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 600.0, 400.0);
 
 use crate::{
     config,
@@ -40,7 +47,7 @@ impl UI {
         // Window
         let window = Window::new(
             mtm,
-            new_nsrect!(0.0, 0.0, 600.0, 400.0),
+            WINDOW_RECT,
             NSWindowStyleMask::Titled | NSWindowStyleMask::Closable,
             NSBackingStoreType::Buffered,
             false,
@@ -56,34 +63,48 @@ impl UI {
         let mut test_button2 = Button::init(mtm);
         test_button.set_title("Stop");
         test_button.set_action(mtm, |_| {
-            config().min_dt = 1.0;
+            config().min_dt = 1.0; // Disable
             print!("set min_dt to 1.0")
         });
         test_button2.set_title("Start");
         test_button2.set_action(mtm, |_| {
-            config().min_dt = 0.005;
+            config().min_dt = 0.005; // Enable
             println!("set min_dt to 0.005");
         });
 
         let buttons = vec![test_button, test_button2];
 
         // View
-        let content_view = window_controller.window.window.contentView().expect("…");
+        let content_view = window_controller
+            .window
+            .window
+            .contentView()
+            .expect("window should have a content view");
 
         // Grid View
-        let grid_view = GridView::new(mtm, content_view.bounds());
+        let grid_view = GridView::new(mtm, ZERO_RECT);
         // TODO: Allow passing in arbitrary objects that have an NSView superclass (.as_view())
         grid_view.add_row_with_views(&[buttons[0].button.as_super(), buttons[1].button.as_super()]);
 
-        grid_view.grid_view.setXPlacement(NSGridCellPlacement::Leading);
+        grid_view.set_x_placeholder(NSGridCellPlacement::Leading);
+        grid_view.set_translates_autoresizing_mask_into_constraints(false);
 
-        grid_view.set_column_spacing(10.0);
-        grid_view.set_row_spacing(10.0);
+        grid_view.set_column_spacing(GRID_SPACING);
+        grid_view.set_row_spacing(GRID_SPACING);
+        content_view.addSubview(grid_view.grid_view.as_super());
 
-        // Set content view after adding all subviews
-        window_controller
-            .window
-            .set_content_view(GridView::as_view(&grid_view));
+        // Auto Layout
+        let constraints = NSArray::from_retained_slice(&[
+            grid_view
+                .grid_view
+                .leadingAnchor()
+                .constraintEqualToAnchor_constant(&content_view.leadingAnchor(), BUTTON_OFFSET),
+            grid_view
+                .grid_view
+                .topAnchor()
+                .constraintEqualToAnchor_constant(&content_view.topAnchor(), BUTTON_OFFSET),
+        ]);
+        NSLayoutConstraint::activateConstraints(&constraints);
 
         // Status item
         let status_item = StatusItem::new();
