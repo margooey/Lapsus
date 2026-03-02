@@ -46,11 +46,19 @@ pub struct Button {
 }
 
 impl Button {
-    pub fn new(mtm: MainThreadMarker, rect: NSRect) -> Self {
+    pub fn init_with_frame(mtm: MainThreadMarker, rect: NSRect) -> Self {
         let button = NSButton::initWithFrame(NSButton::alloc(mtm), rect);
         Self {
             button,
             _target: None,
+        }
+    }
+
+    pub fn init(mtm: MainThreadMarker) -> Self {
+        let button = NSButton::init(NSButton::alloc(mtm));
+        Self {
+            button,
+            _target: None
         }
     }
 

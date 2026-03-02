@@ -11,7 +11,7 @@ pub mod window;
 pub mod window_controller;
 
 use objc2::{ClassType, sel};
-use objc2_app_kit::{NSBackingStoreType, NSWindowStyleMask};
+use objc2_app_kit::{NSBackingStoreType, NSGridCellPlacement, NSWindowStyleMask};
 use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
 
 use crate::{
@@ -52,8 +52,8 @@ impl UI {
         let window_controller = WindowController::new(mtm, window);
 
         // Buttons
-        let mut test_button = Button::new(mtm, new_nsrect!(40.0, 40.0, 100.0, 100.0));
-        let mut test_button2 = Button::new(mtm, new_nsrect!(180.0, 40.0, 100.0, 100.0));
+        let mut test_button = Button::init(mtm);
+        let mut test_button2 = Button::init(mtm);
         test_button.set_title("Stop");
         test_button.set_action(mtm, |_| {
             config().min_dt = 1.0;
@@ -74,6 +74,8 @@ impl UI {
         let grid_view = GridView::new(mtm, content_view.bounds());
         // TODO: Allow passing in arbitrary objects that have an NSView superclass (.as_view())
         grid_view.add_row_with_views(&[buttons[0].button.as_super(), buttons[1].button.as_super()]);
+
+        grid_view.grid_view.setXPlacement(NSGridCellPlacement::Leading);
 
         grid_view.set_column_spacing(10.0);
         grid_view.set_row_spacing(10.0);
