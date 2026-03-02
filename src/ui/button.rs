@@ -58,7 +58,7 @@ impl Button {
         let button = NSButton::init(NSButton::alloc(mtm));
         Self {
             button,
-            _target: None
+            _target: None,
         }
     }
 

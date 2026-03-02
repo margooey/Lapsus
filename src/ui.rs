@@ -14,9 +14,9 @@ use objc2::{ClassType, sel};
 use objc2_app_kit::{
     NSBackingStoreType, NSGridCellPlacement, NSLayoutConstraint, NSWindowStyleMask,
 };
-use objc2_foundation::{NSArray, MainThreadMarker, NSPoint, NSRect, NSSize, NSString};
+use objc2_foundation::{MainThreadMarker, NSArray, NSPoint, NSRect, NSSize, NSString};
 
-const ZERO_RECT: NSRect = new_nsrect!(0.0,0.0,0.0,0.0);
+const ZERO_RECT: NSRect = new_nsrect!(0.0, 0.0, 0.0, 0.0);
 const BUTTON_OFFSET: f64 = 10.0;
 const GRID_SPACING: f64 = 10.0;
 const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 600.0, 400.0);

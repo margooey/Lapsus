@@ -33,12 +33,17 @@ impl GridView {
     pub fn set_row_spacing(&self, row_spacing: CGFloat) {
         self.grid_view.setRowSpacing(row_spacing)
     }
-    
+
     pub fn set_x_placeholder(&self, x_placement: NSGridCellPlacement) {
         self.grid_view.setXPlacement(x_placement)
     }
 
-    pub fn set_translates_autoresizing_mask_into_constraints(&self, translates_autoresizing_mask_into_constraints: bool) {
-        self.grid_view.setTranslatesAutoresizingMaskIntoConstraints(translates_autoresizing_mask_into_constraints);
+    pub fn set_translates_autoresizing_mask_into_constraints(
+        &self,
+        translates_autoresizing_mask_into_constraints: bool,
+    ) {
+        self.grid_view.setTranslatesAutoresizingMaskIntoConstraints(
+            translates_autoresizing_mask_into_constraints,
+        );
     }
 }
