@@ -1,5 +1,5 @@
 use objc2::{MainThreadMarker, MainThreadOnly, rc::Retained};
-use objc2_app_kit::NSTextField;
+use objc2_app_kit::{NSFont, NSTextField};
 use objc2_foundation::NSString;
 
 pub struct TextField {
@@ -20,5 +20,8 @@ impl TextField {
     }
     pub fn set_bordered(&self, bordered: bool) {
         self.text_field.setBordered(bordered);
+    }
+    pub fn set_font(&self, font: Retained<NSFont>) {
+        self.text_field.setFont(Some(&font));
     }
 }

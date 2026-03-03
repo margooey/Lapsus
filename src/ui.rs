@@ -13,12 +13,12 @@ pub mod window_controller;
 
 use objc2::{ClassType, sel};
 use objc2_app_kit::{
-    NSBackingStoreType, NSGridCellPlacement, NSLayoutConstraint, NSView, NSWindowStyleMask,
+    NSBackingStoreType, NSFont, NSGridCellPlacement, NSLayoutConstraint, NSView, NSWindowStyleMask,
 };
 use objc2_foundation::{MainThreadMarker, NSArray, NSPoint, NSRect, NSSize, NSString};
 
 const ZERO_RECT: NSRect = new_nsrect!(0.0, 0.0, 0.0, 0.0);
-const BUTTON_OFFSET: f64 = 10.0;
+const CONTENT_PADDING: f64 = 10.0;
 const GRID_SPACING: f64 = 10.0;
 const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 600.0, 400.0);
 
@@ -44,6 +44,7 @@ impl UI {
         // App
         let app = App::new(mtm);
         let mut views: Vec<&NSView> = vec![];
+        let header_font = NSFont::boldSystemFontOfSize(24.0);
         app.activate();
 
         // Window
@@ -76,12 +77,15 @@ impl UI {
         views.push(&test_button.button);
         views.push(&test_button2.button);
 
-        // Label
-        let label = TextField::init(mtm);
-        label.set_string_value("Test Label");
-        label.set_editable(false);
-        label.set_bordered(false);
-        views.push(&label.text_field);
+        // Settings Window Header
+        let header = TextField::init(mtm);
+        header.set_string_value("Lapsus Settings");
+        header.set_editable(false);
+        header.set_bordered(false);
+        header.set_font(header_font);
+        header
+            .text_field
+            .setTranslatesAutoresizingMaskIntoConstraints(false);
 
         // View
         let content_view = window_controller
@@ -92,7 +96,6 @@ impl UI {
 
         // Grid View
         let grid_view = GridView::new(mtm, ZERO_RECT);
-        // TODO: Allow passing in arbitrary objects that have an NSView superclass (.as_view())
         grid_view.add_row_with_views(&views);
 
         grid_view.set_x_placeholder(NSGridCellPlacement::Leading);
@@ -100,18 +103,29 @@ impl UI {
 
         grid_view.set_column_spacing(GRID_SPACING);
         grid_view.set_row_spacing(GRID_SPACING);
+
+        // Setup Layout
+        content_view.addSubview(&header.text_field);
         content_view.addSubview(grid_view.grid_view.as_super());
 
-        // Auto Layout
+        // Auto Layout Constraints
         let constraints = NSArray::from_retained_slice(&[
+            header
+                .text_field
+                .leadingAnchor()
+                .constraintEqualToAnchor_constant(&content_view.leadingAnchor(), CONTENT_PADDING),
+            header
+                .text_field
+                .topAnchor()
+                .constraintEqualToAnchor_constant(&content_view.topAnchor(), CONTENT_PADDING),
             grid_view
                 .grid_view
                 .leadingAnchor()
-                .constraintEqualToAnchor_constant(&content_view.leadingAnchor(), BUTTON_OFFSET),
+                .constraintEqualToAnchor_constant(&content_view.leadingAnchor(), CONTENT_PADDING),
             grid_view
                 .grid_view
                 .topAnchor()
-                .constraintEqualToAnchor_constant(&content_view.topAnchor(), BUTTON_OFFSET),
+                .constraintEqualToAnchor_constant(&header.text_field.bottomAnchor(), GRID_SPACING),
         ]);
         NSLayoutConstraint::activateConstraints(&constraints);
 
