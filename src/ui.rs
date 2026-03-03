@@ -13,7 +13,8 @@ pub mod window_controller;
 
 use objc2::{ClassType, sel};
 use objc2_app_kit::{
-    NSBackingStoreType, NSFont, NSGridCellPlacement, NSLayoutConstraint, NSView, NSWindowStyleMask,
+    NSBackingStoreType, NSControlStateValueOn, NSFont, NSGridCellPlacement, NSLayoutConstraint,
+    NSView, NSWindowStyleMask,
 };
 use objc2_foundation::{MainThreadMarker, NSArray, NSPoint, NSRect, NSSize, NSString};
 
@@ -25,7 +26,7 @@ const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 600.0, 400.0);
 use crate::{
     config,
     ui::{
-        app::App, button::Button, grid_view::GridView, menu::Menu, menu_item::MenuItem,
+        app::App, grid_view::GridView, menu::Menu, menu_item::MenuItem,
         status_bar_button::StatusBarButton, status_item::StatusItem, switch::Switch,
         text_field::TextField, window::Window, window_controller::WindowController,
     },
@@ -35,11 +36,21 @@ use crate::{
 pub struct UI {
     _window_controller: WindowController,
     pub status_item: StatusItem,
-    _buttons: Vec<Button>,
-    _switch: Switch
+    _switch: Switch,
 }
 
 impl UI {
+    fn toggle_momentum() {
+        let mut config = config();
+        let enabled_min_dt = env!("MIN_DT").parse::<f64>().unwrap();
+        let disabled_min_dt = 1.0;
+
+        config.min_dt = if config.min_dt == enabled_min_dt {
+            disabled_min_dt
+        } else {
+            enabled_min_dt
+        };
+    }
     pub fn initialize() -> Self {
         let mtm = MainThreadMarker::new().expect("must be on the main thread");
         // App
@@ -62,26 +73,13 @@ impl UI {
         // Window Controller
         let window_controller = WindowController::new(mtm, window);
 
-        // Buttons
-        let mut test_button = Button::init(mtm);
-        let mut test_button2 = Button::init(mtm);
-        test_button.set_title("Stop");
-        test_button.set_action(mtm, |_| {
-            config().min_dt = 1.0; // Disable
-        });
-        test_button2.set_title("Start");
-        test_button2.set_action(mtm, |_| {
-            config().min_dt = 0.005; // Enable
-        });
-        views.push(&test_button.button);
-        views.push(&test_button2.button);
-
+        // Enable/Disable Switch
         let mut switch = Switch::init(mtm);
         switch.set_action(mtm, |_| {
-            println!("test")
+            Self::toggle_momentum();
         });
+        switch.set_state(NSControlStateValueOn);
         views.push(&switch.switch);
-
 
         // Settings Window Header
         let header = TextField::init(mtm);
@@ -170,8 +168,7 @@ impl UI {
         return Self {
             _window_controller: window_controller,
             status_item,
-            _buttons: vec![test_button, test_button2],
-            _switch: switch
+            _switch: switch,
         };
     }
 }

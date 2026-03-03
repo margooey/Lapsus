@@ -1,6 +1,6 @@
 // WIP
 use objc2::{AnyThread, DefinedClass, MainThreadOnly, define_class, msg_send, rc::Retained, sel};
-use objc2_app_kit::NSSwitch;
+use objc2_app_kit::{NSControlStateValue, NSControlStateValueOn, NSSwitch};
 use objc2_foundation::{MainThreadMarker, NSObject, NSObjectProtocol};
 
 struct ActionIvars {
@@ -59,5 +59,8 @@ impl Switch {
             self.switch.setAction(Some(sel!(switchValueChanged:)));
         }
         self._target = Some(target);
+    }
+    pub fn set_state(&self, state: NSControlStateValue) {
+        self.switch.setState(state);
     }
 }
