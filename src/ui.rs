@@ -67,12 +67,10 @@ impl UI {
         test_button.set_title("Stop");
         test_button.set_action(mtm, |_| {
             config().min_dt = 1.0; // Disable
-            print!("set min_dt to 1.0")
         });
         test_button2.set_title("Start");
         test_button2.set_action(mtm, |_| {
             config().min_dt = 0.005; // Enable
-            println!("set min_dt to 0.005");
         });
         views.push(&test_button.button);
         views.push(&test_button2.button);
