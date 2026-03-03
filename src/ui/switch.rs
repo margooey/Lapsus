@@ -14,7 +14,7 @@ define_class!(
     struct SwitchActionTarget;
 
     impl SwitchActionTarget {
-        #[unsafe(method(buttonClicked:))]
+        #[unsafe(method(switchValueChanged:))]
         fn switch_toggled(&self, sender: &NSSwitch) {
             (self.ivars().callback)(sender);
         }

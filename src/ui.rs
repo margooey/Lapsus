@@ -36,6 +36,7 @@ pub struct UI {
     _window_controller: WindowController,
     pub status_item: StatusItem,
     _buttons: Vec<Button>,
+    _switch: Switch
 }
 
 impl UI {
@@ -74,6 +75,13 @@ impl UI {
         });
         views.push(&test_button.button);
         views.push(&test_button2.button);
+
+        let mut switch = Switch::init(mtm);
+        switch.set_action(mtm, |_| {
+            println!("test")
+        });
+        views.push(&switch.switch);
+
 
         // Settings Window Header
         let header = TextField::init(mtm);
@@ -163,6 +171,7 @@ impl UI {
             _window_controller: window_controller,
             status_item,
             _buttons: vec![test_button, test_button2],
+            _switch: switch
         };
     }
 }
