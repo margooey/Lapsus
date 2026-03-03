@@ -3,9 +3,9 @@ pub mod button;
 pub mod grid_view;
 pub mod menu;
 pub mod menu_item;
-pub mod slider;
 pub mod status_bar_button;
 pub mod status_item;
+pub mod switch;
 pub mod text_field;
 pub mod view;
 pub mod window;
@@ -26,8 +26,8 @@ use crate::{
     config,
     ui::{
         app::App, button::Button, grid_view::GridView, menu::Menu, menu_item::MenuItem,
-        status_bar_button::StatusBarButton, status_item::StatusItem, text_field::TextField,
-        window::Window, window_controller::WindowController,
+        status_bar_button::StatusBarButton, status_item::StatusItem, switch::Switch,
+        text_field::TextField, window::Window, window_controller::WindowController,
     },
     utils::new_nsrect,
 };

@@ -14,21 +14,21 @@ struct ActionIvars {
 
 define_class!(
     #[unsafe(super(NSObject))]
-    #[name = "ActionTarget"]
+    #[name = "ButtonActionTarget"]
     #[ivars = ActionIvars]
-    struct ActionTarget;
+    struct ButtonActionTarget;
 
-    impl ActionTarget {
+    impl ButtonActionTarget {
         #[unsafe(method(buttonClicked:))]
         fn button_clicked(&self, sender: &NSButton) {
             (self.ivars().callback)(sender);
         }
     }
 
-    unsafe impl NSObjectProtocol for ActionTarget {}
+    unsafe impl NSObjectProtocol for ButtonActionTarget {}
 );
 
-impl ActionTarget {
+impl ButtonActionTarget {
     fn new<F>(_: MainThreadMarker, f: F) -> Retained<Self>
     where
         F: Fn(&NSButton) + 'static,
@@ -42,7 +42,7 @@ impl ActionTarget {
 
 pub struct Button {
     pub button: Retained<NSButton>,
-    _target: Option<Retained<ActionTarget>>,
+    _target: Option<Retained<ButtonActionTarget>>,
 }
 
 impl Button {
@@ -70,7 +70,7 @@ impl Button {
     where
         F: Fn(&NSButton) + 'static,
     {
-        let target = ActionTarget::new(mtm, f);
+        let target = ButtonActionTarget::new(mtm, f);
         unsafe {
             self.button.setTarget(Some(&target));
             self.button.setAction(Some(sel!(buttonClicked:)));
