@@ -22,10 +22,10 @@ pub mod view;
 pub mod window;
 pub mod window_controller;
 
-use objc2::sel;
+use objc2::{rc::Retained, sel};
 use objc2_app_kit::{
     NSBackingStoreType, NSControlStateValueOff, NSControlStateValueOn, NSFont, NSLayoutConstraint,
-    NSTextAlignment, NSWindowStyleMask,
+    NSTextAlignment, NSView, NSWindowStyleMask,
 };
 use objc2_foundation::{MainThreadMarker, NSArray, NSPoint, NSRect, NSSize, NSString};
 
@@ -69,6 +69,43 @@ impl UI {
         config().min_dt == enabled_min_dt
     }
 
+    fn apply_general_row_constraints(
+        content_view: &Retained<NSView>,
+        general_label: &TextField,
+        momentum_checkbox: &Checkbox,
+    ) {
+        general_label.set_translates_autoresizing_mask_into_constraints(false);
+        momentum_checkbox.set_translates_autoresizing_mask_into_constraints(false);
+
+        let constraints = NSArray::from_retained_slice(&[
+            general_label
+                .leading_anchor()
+                .constraintEqualToAnchor_constant(&content_view.leadingAnchor(), SIDE_MARGIN),
+            general_label
+                .width_anchor()
+                .constraintEqualToConstant(LABEL_COLUMN_WIDTH),
+            momentum_checkbox
+                .leading_anchor()
+                .constraintEqualToAnchor_constant(
+                    &general_label.text_field.trailingAnchor(),
+                    LABEL_CONTROL_GAP,
+                ),
+            momentum_checkbox
+                .top_anchor()
+                .constraintEqualToAnchor_constant(&content_view.topAnchor(), TOP_MARGIN),
+            momentum_checkbox
+                .trailing_anchor()
+                .constraintLessThanOrEqualToAnchor_constant(
+                    &content_view.trailingAnchor(),
+                    -SIDE_MARGIN,
+                ),
+            general_label
+                .first_baseline_anchor()
+                .constraintEqualToAnchor(&momentum_checkbox.button.firstBaselineAnchor()),
+        ]);
+        NSLayoutConstraint::activateConstraints(&constraints);
+    }
+
     pub fn initialize() -> Self {
         let mtm = MainThreadMarker::new().expect("must be on the main thread");
         let app = App::new(mtm);
@@ -87,7 +124,6 @@ impl UI {
 
         let window_controller = WindowController::new(mtm, window);
 
-        // Enable/Disable Momentum
         let mut momentum_checkbox = Checkbox::init_with_title(mtm, "Enable momentum");
         momentum_checkbox.set_action(mtm, |sender| {
             Self::set_momentum_enabled(sender.state() == NSControlStateValueOn);
@@ -109,50 +145,10 @@ impl UI {
             NSControlStateValueOff
         });
 
-        general_label
-            .text_field
-            .setTranslatesAutoresizingMaskIntoConstraints(false);
-        momentum_checkbox
-            .button
-            .setTranslatesAutoresizingMaskIntoConstraints(false);
-
         content_view.addSubview(&general_label.text_field);
         content_view.addSubview(&momentum_checkbox.button);
 
-        // Auto Layout
-        let constraints = NSArray::from_retained_slice(&[
-            general_label
-                .text_field
-                .leadingAnchor()
-                .constraintEqualToAnchor_constant(&content_view.leadingAnchor(), SIDE_MARGIN),
-            general_label
-                .text_field
-                .widthAnchor()
-                .constraintEqualToConstant(LABEL_COLUMN_WIDTH),
-            momentum_checkbox
-                .button
-                .leadingAnchor()
-                .constraintEqualToAnchor_constant(
-                    &general_label.text_field.trailingAnchor(),
-                    LABEL_CONTROL_GAP,
-                ),
-            momentum_checkbox
-                .button
-                .topAnchor()
-                .constraintEqualToAnchor_constant(&content_view.topAnchor(), TOP_MARGIN),
-            momentum_checkbox
-                .button
-                .trailingAnchor()
-                .constraintLessThanOrEqualToAnchor_constant(
-                    &content_view.trailingAnchor(),
-                    -SIDE_MARGIN,
-                ),
-            general_label
-                .text_field
-                .firstBaselineAnchor()
-                .constraintEqualToAnchor(&momentum_checkbox.button.firstBaselineAnchor()),
-        ]);
-        NSLayoutConstraint::activateConstraints(&constraints);
+        Self::apply_general_row_constraints(&content_view, &general_label, &momentum_checkbox);
 
         let status_item = StatusItem::new();
         let status_bar_button = StatusBarButton::new(mtm, &status_item);

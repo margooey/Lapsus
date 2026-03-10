@@ -1,5 +1,8 @@
 use objc2::{MainThreadMarker, MainThreadOnly, rc::Retained};
-use objc2_app_kit::{NSFont, NSTextAlignment, NSTextField};
+use objc2_app_kit::{
+    NSFont, NSLayoutDimension, NSLayoutXAxisAnchor, NSLayoutYAxisAnchor, NSTextAlignment,
+    NSTextField,
+};
 use objc2_foundation::{NSRect, NSString};
 
 pub struct TextField {
@@ -33,5 +36,23 @@ impl TextField {
     }
     pub fn set_frame(&self, frame: NSRect) {
         self.text_field.setFrame(frame);
+    }
+    pub fn set_translates_autoresizing_mask_into_constraints(
+        &self,
+        translates_autoresizing_mask_into_constraints: bool,
+    ) {
+        self.text_field
+            .setTranslatesAutoresizingMaskIntoConstraints(
+                translates_autoresizing_mask_into_constraints,
+            );
+    }
+    pub fn leading_anchor(&self) -> Retained<NSLayoutXAxisAnchor> {
+        self.text_field.leadingAnchor()
+    }
+    pub fn width_anchor(&self) -> Retained<NSLayoutDimension> {
+        self.text_field.widthAnchor()
+    }
+    pub fn first_baseline_anchor(&self) -> Retained<NSLayoutYAxisAnchor> {
+        self.text_field.firstBaselineAnchor()
     }
 }

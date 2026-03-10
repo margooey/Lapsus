@@ -1,5 +1,5 @@
 use objc2::{AnyThread, DefinedClass, define_class, msg_send, rc::Retained, sel};
-use objc2_app_kit::{NSButton, NSControlStateValue};
+use objc2_app_kit::{NSButton, NSControlStateValue, NSLayoutXAxisAnchor, NSLayoutYAxisAnchor};
 use objc2_foundation::{MainThreadMarker, NSObject, NSObjectProtocol, NSRect, NSString};
 
 struct ActionIvars {
@@ -76,5 +76,22 @@ impl Checkbox {
 
     pub fn set_frame(&self, frame: NSRect) {
         self.button.setFrame(frame);
+    }
+    pub fn set_translates_autoresizing_mask_into_constraints(
+        &self,
+        translates_autoresizing_mask_into_constraints: bool,
+    ) {
+        self.button.setTranslatesAutoresizingMaskIntoConstraints(
+            translates_autoresizing_mask_into_constraints,
+        );
+    }
+    pub fn top_anchor(&self) -> Retained<NSLayoutYAxisAnchor> {
+        self.button.topAnchor()
+    }
+    pub fn trailing_anchor(&self) -> Retained<NSLayoutXAxisAnchor> {
+        self.button.trailingAnchor()
+    }
+    pub fn leading_anchor(&self) -> Retained<NSLayoutXAxisAnchor> {
+        self.button.leadingAnchor()
     }
 }
