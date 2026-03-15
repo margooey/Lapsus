@@ -38,13 +38,13 @@ const ROW_GAP: f64 = 8.0;
 const LABEL_COLUMN_WIDTH: f64 = 92.0;
 
 use crate::{
-    config,
+    config::config,
     ui::{
         app::App, checkbox::Checkbox, menu::Menu, menu_item::MenuItem,
         status_bar_button::StatusBarButton, status_item::StatusItem, text_field::TextField,
         window::Window, window_controller::WindowController,
     },
-    utils::new_nsrect,
+    utils::{env_f64, new_nsrect},
 };
 
 pub struct UI {
@@ -57,41 +57,59 @@ pub struct UI {
 
 impl UI {
     fn set_momentum_enabled(is_enabled: bool) {
-        let mut config = config();
-        let enabled_min_dt = env!("MIN_DT").parse::<f64>().unwrap();
-        let disabled_min_dt = 1.0;
+        {
+            let mut config = config();
+            let enabled_min_dt = env_f64!("MIN_DT");
+            let disabled_min_dt = 1.0;
 
-        config.min_dt = if is_enabled {
-            enabled_min_dt
-        } else {
-            disabled_min_dt
-        };
+            config.min_dt = if is_enabled {
+                enabled_min_dt
+            } else {
+                disabled_min_dt
+            };
+        }
+        crate::config::persist_config();
     }
 
     fn momentum_is_enabled() -> bool {
-        let enabled_min_dt = env!("MIN_DT").parse::<f64>().unwrap();
+        let enabled_min_dt = env_f64!("MIN_DT");
         config().min_dt == enabled_min_dt
     }
 
     fn set_high_speed_enabled(is_enabled: bool) {
-        let mut config = config();
-        let default_gain = env!("TRACKPAD_VELOCITY_GAIN").parse::<f64>().unwrap();
+        {
+            let mut config = config();
+            let default_gain = env_f64!("TRACKPAD_VELOCITY_GAIN");
 
-        config.trackpad_velocity_gain = if is_enabled {
-            default_gain * 2.0
-        } else {
-            default_gain
-        };
+            config.trackpad_velocity_gain = if is_enabled {
+                default_gain * 2.0
+            } else {
+                default_gain
+            };
+        }
+        crate::config::persist_config();
     }
 
     fn high_speed_is_enabled() -> bool {
-        let default_gain = env!("TRACKPAD_VELOCITY_GAIN").parse::<f64>().unwrap();
+        let default_gain = env_f64!("TRACKPAD_VELOCITY_GAIN");
         let high_speed_gain = default_gain * 2.0;
         config().trackpad_velocity_gain == high_speed_gain
     }
 
-    fn set_logon_item_enabled(is_enabled: bool) {
+    fn update_logon_item_registration(is_enabled: bool) {
         let app_service = unsafe { SMAppService::mainAppService() };
+        let status = unsafe { app_service.status() };
+
+        if is_enabled
+            && (status == SMAppServiceStatus::Enabled
+                || status == SMAppServiceStatus::RequiresApproval)
+        {
+            return;
+        }
+        if !is_enabled && status == SMAppServiceStatus::NotRegistered {
+            return;
+        }
+
         let result = if is_enabled {
             unsafe { app_service.registerAndReturnError() }
         } else {
@@ -103,16 +121,21 @@ impl UI {
         }
     }
 
-    fn ensure_logon_item_default_enabled() {
-        if !Self::logon_item_is_enabled() {
-            Self::set_logon_item_enabled(true);
+    fn set_logon_item_enabled(is_enabled: bool) {
+        Self::update_logon_item_registration(is_enabled);
+        {
+            let mut config = config();
+            config.logon_item_enabled = is_enabled;
         }
+        crate::config::persist_config();
+    }
+
+    fn apply_saved_logon_item_setting() {
+        Self::update_logon_item_registration(Self::logon_item_is_enabled());
     }
 
     fn logon_item_is_enabled() -> bool {
-        let app_service = unsafe { SMAppService::mainAppService() };
-        let status = unsafe { app_service.status() };
-        status == SMAppServiceStatus::Enabled || status == SMAppServiceStatus::RequiresApproval
+        config().logon_item_enabled
     }
 
     fn apply_general_row_constraints(
@@ -238,7 +261,7 @@ impl UI {
         } else {
             NSControlStateValueOff
         });
-        Self::ensure_logon_item_default_enabled();
+        Self::apply_saved_logon_item_setting();
         logon_item_checkbox.size_to_fit();
         logon_item_checkbox.set_state(if Self::logon_item_is_enabled() {
             NSControlStateValueOn
