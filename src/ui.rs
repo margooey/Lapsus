@@ -1,51 +1,220 @@
+/*
+   I am really in over my head with this UI solution. Some LLM assistance was requested
+   to help with the auto layout shenanigans, mostly everything else was rolled by me.
+   I specifically referenced https://marioaguzman.github.io/design/layoutguidelines/
+   to help me figure out what exactly I wanted the settings window to look like.
+
+   Eventually, I plan to break out all of the work I've done on these objc2 wrappers into a separate
+   crate as something like "Lapui" (pronounced LAPOOEY, short for Lapsus UI). Maybe someone else could
+   use it.
+*/
 pub mod app;
 pub mod button;
+pub mod checkbox;
 pub mod grid_view;
 pub mod menu;
 pub mod menu_item;
-pub mod slider;
 pub mod status_bar_button;
 pub mod status_item;
+pub mod switch;
+pub mod text_field;
 pub mod view;
 pub mod window;
 pub mod window_controller;
 
-use objc2::{ClassType, MainThreadOnly, sel};
+use objc2::{rc::Retained, sel};
 use objc2_app_kit::{
-    NSBackingStoreType, NSGridCellPlacement, NSLayoutConstraint, NSTextField, NSView, NSWindowStyleMask
+    NSBackingStoreType, NSControlStateValueOff, NSControlStateValueOn, NSFont, NSLayoutConstraint,
+    NSTextAlignment, NSView, NSWindowStyleMask,
 };
 use objc2_foundation::{MainThreadMarker, NSArray, NSPoint, NSRect, NSSize, NSString};
+use objc2_service_management::{SMAppService, SMAppServiceStatus};
 
-const ZERO_RECT: NSRect = new_nsrect!(0.0, 0.0, 0.0, 0.0);
-const BUTTON_OFFSET: f64 = 10.0;
-const GRID_SPACING: f64 = 10.0;
-const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 600.0, 400.0);
+const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 420.0, 140.0);
+const TOP_MARGIN: f64 = 14.0;
+const SIDE_MARGIN: f64 = 20.0;
+const LABEL_CONTROL_GAP: f64 = 6.0;
+const ROW_GAP: f64 = 8.0;
+const LABEL_COLUMN_WIDTH: f64 = 92.0;
 
 use crate::{
-    config,
+    config::config,
     ui::{
-        app::App, button::Button, grid_view::GridView, menu::Menu, menu_item::MenuItem,
-        status_bar_button::StatusBarButton, status_item::StatusItem, window::Window,
-        window_controller::WindowController,
+        app::App, checkbox::Checkbox, menu::Menu, menu_item::MenuItem,
+        status_bar_button::StatusBarButton, status_item::StatusItem, text_field::TextField,
+        window::Window, window_controller::WindowController,
     },
-    utils::new_nsrect,
+    utils::{env_f64, new_nsrect},
 };
 
 pub struct UI {
     _window_controller: WindowController,
     pub status_item: StatusItem,
-    _buttons: Vec<Button>,
+    _momentum_checkbox: Checkbox,
+    _high_speed_checkbox: Checkbox,
+    _logon_item_checkbox: Checkbox,
 }
 
 impl UI {
+    fn set_momentum_enabled(is_enabled: bool) {
+        {
+            let mut config = config();
+            let enabled_min_dt = env_f64!("MIN_DT");
+            let disabled_min_dt = 1.0;
+
+            config.min_dt = if is_enabled {
+                enabled_min_dt
+            } else {
+                disabled_min_dt
+            };
+        }
+        crate::config::persist_config();
+    }
+
+    fn momentum_is_enabled() -> bool {
+        let enabled_min_dt = env_f64!("MIN_DT");
+        config().min_dt == enabled_min_dt
+    }
+
+    fn set_high_speed_enabled(is_enabled: bool) {
+        {
+            let mut config = config();
+            let default_gain = env_f64!("TRACKPAD_VELOCITY_GAIN");
+
+            config.trackpad_velocity_gain = if is_enabled {
+                default_gain * 2.0
+            } else {
+                default_gain
+            };
+        }
+        crate::config::persist_config();
+    }
+
+    fn high_speed_is_enabled() -> bool {
+        let default_gain = env_f64!("TRACKPAD_VELOCITY_GAIN");
+        let high_speed_gain = default_gain * 2.0;
+        config().trackpad_velocity_gain == high_speed_gain
+    }
+
+    fn update_logon_item_registration(is_enabled: bool) {
+        let app_service = unsafe { SMAppService::mainAppService() };
+        let status = unsafe { app_service.status() };
+
+        if is_enabled
+            && (status == SMAppServiceStatus::Enabled
+                || status == SMAppServiceStatus::RequiresApproval)
+        {
+            return;
+        }
+        if !is_enabled && status == SMAppServiceStatus::NotRegistered {
+            return;
+        }
+
+        let result = if is_enabled {
+            unsafe { app_service.registerAndReturnError() }
+        } else {
+            unsafe { app_service.unregisterAndReturnError() }
+        };
+
+        if let Err(error) = result {
+            log::warn!("failed to update logon item state: {:?}", error);
+        }
+    }
+
+    fn set_logon_item_enabled(is_enabled: bool) {
+        Self::update_logon_item_registration(is_enabled);
+        {
+            let mut config = config();
+            config.logon_item_enabled = is_enabled;
+        }
+        crate::config::persist_config();
+    }
+
+    fn apply_saved_logon_item_setting() {
+        Self::update_logon_item_registration(Self::logon_item_is_enabled());
+    }
+
+    fn logon_item_is_enabled() -> bool {
+        config().logon_item_enabled
+    }
+
+    fn apply_general_row_constraints(
+        content_view: &Retained<NSView>,
+        general_label: &TextField,
+        momentum_checkbox: &Checkbox,
+        high_speed_checkbox: &Checkbox,
+        logon_item_checkbox: &Checkbox,
+    ) {
+        general_label.set_translates_autoresizing_mask_into_constraints(false);
+        momentum_checkbox.set_translates_autoresizing_mask_into_constraints(false);
+        high_speed_checkbox.set_translates_autoresizing_mask_into_constraints(false);
+        logon_item_checkbox.set_translates_autoresizing_mask_into_constraints(false);
+
+        let constraints = NSArray::from_retained_slice(&[
+            general_label
+                .leading_anchor()
+                .constraintEqualToAnchor_constant(&content_view.leadingAnchor(), SIDE_MARGIN),
+            general_label
+                .width_anchor()
+                .constraintEqualToConstant(LABEL_COLUMN_WIDTH),
+            momentum_checkbox
+                .leading_anchor()
+                .constraintEqualToAnchor_constant(
+                    &general_label.text_field.trailingAnchor(),
+                    LABEL_CONTROL_GAP,
+                ),
+            momentum_checkbox
+                .top_anchor()
+                .constraintEqualToAnchor_constant(&content_view.topAnchor(), TOP_MARGIN),
+            momentum_checkbox
+                .trailing_anchor()
+                .constraintLessThanOrEqualToAnchor_constant(
+                    &content_view.trailingAnchor(),
+                    -SIDE_MARGIN,
+                ),
+            general_label
+                .first_baseline_anchor()
+                .constraintEqualToAnchor(&momentum_checkbox.button.firstBaselineAnchor()),
+            high_speed_checkbox
+                .leading_anchor()
+                .constraintEqualToAnchor(&momentum_checkbox.leading_anchor()),
+            high_speed_checkbox
+                .top_anchor()
+                .constraintEqualToAnchor_constant(
+                    &momentum_checkbox.button.bottomAnchor(),
+                    ROW_GAP,
+                ),
+            high_speed_checkbox
+                .trailing_anchor()
+                .constraintLessThanOrEqualToAnchor_constant(
+                    &content_view.trailingAnchor(),
+                    -SIDE_MARGIN,
+                ),
+            logon_item_checkbox
+                .leading_anchor()
+                .constraintEqualToAnchor(&momentum_checkbox.leading_anchor()),
+            logon_item_checkbox
+                .top_anchor()
+                .constraintEqualToAnchor_constant(
+                    &high_speed_checkbox.button.bottomAnchor(),
+                    ROW_GAP,
+                ),
+            logon_item_checkbox
+                .trailing_anchor()
+                .constraintLessThanOrEqualToAnchor_constant(
+                    &content_view.trailingAnchor(),
+                    -SIDE_MARGIN,
+                ),
+        ]);
+        NSLayoutConstraint::activateConstraints(&constraints);
+    }
+
     pub fn initialize() -> Self {
         let mtm = MainThreadMarker::new().expect("must be on the main thread");
-        // App
         let app = App::new(mtm);
-        let mut views: Vec<&NSView> = vec![];
+        let label_font = NSFont::systemFontOfSize(13.0);
         app.activate();
 
-        // Window
         let window = Window::new(
             mtm,
             WINDOW_RECT,
@@ -56,76 +225,69 @@ impl UI {
         window.set_title("Settings");
         window.center();
 
-        // Window Controller
         let window_controller = WindowController::new(mtm, window);
 
-        // Buttons
-        let mut test_button = Button::init(mtm);
-        let mut test_button2 = Button::init(mtm);
-        test_button.set_title("Stop");
-        test_button.set_action(mtm, |_| {
-            config().min_dt = 1.0; // Disable
-            print!("set min_dt to 1.0")
+        let mut momentum_checkbox = Checkbox::init_with_title(mtm, "Enable momentum");
+        momentum_checkbox.set_action(mtm, |sender| {
+            Self::set_momentum_enabled(sender.state() == NSControlStateValueOn);
         });
-        test_button2.set_title("Start");
-        test_button2.set_action(mtm, |_| {
-            config().min_dt = 0.005; // Enable
-            println!("set min_dt to 0.005");
+        let mut high_speed_checkbox = Checkbox::init_with_title(mtm, "High speed");
+        high_speed_checkbox.set_action(mtm, |sender| {
+            Self::set_high_speed_enabled(sender.state() == NSControlStateValueOn);
         });
-        views.push(&test_button.button);
-        views.push(&test_button2.button);
-
-        // Label
-        // TODO: Abstract label into its own wrapper
-        let label = NSTextField::init(NSTextField::alloc(mtm));
-        label.setStringValue(&NSString::from_str("Test Label"));
-        label.setEditable(false);
-        label.setBordered(false);
-        views.push(&label);
-
-        // View
+        let mut logon_item_checkbox = Checkbox::init_with_title(mtm, "Launch on login");
+        logon_item_checkbox.set_action(mtm, |sender| {
+            Self::set_logon_item_enabled(sender.state() == NSControlStateValueOn);
+        });
         let content_view = window_controller
             .window
             .window
             .contentView()
             .expect("window should have a content view");
 
-        // Grid View
-        let grid_view = GridView::new(mtm, ZERO_RECT);
-        // TODO: Allow passing in arbitrary objects that have an NSView superclass (.as_view())
-        grid_view.add_row_with_views(&views);
+        let general_label = TextField::label(mtm, "General:");
+        general_label.set_font(label_font);
+        general_label.set_alignment(NSTextAlignment::Right);
 
-        grid_view.set_x_placeholder(NSGridCellPlacement::Leading);
-        grid_view.set_translates_autoresizing_mask_into_constraints(false);
+        momentum_checkbox.size_to_fit();
+        momentum_checkbox.set_state(if Self::momentum_is_enabled() {
+            NSControlStateValueOn
+        } else {
+            NSControlStateValueOff
+        });
+        high_speed_checkbox.size_to_fit();
+        high_speed_checkbox.set_state(if Self::high_speed_is_enabled() {
+            NSControlStateValueOn
+        } else {
+            NSControlStateValueOff
+        });
+        Self::apply_saved_logon_item_setting();
+        logon_item_checkbox.size_to_fit();
+        logon_item_checkbox.set_state(if Self::logon_item_is_enabled() {
+            NSControlStateValueOn
+        } else {
+            NSControlStateValueOff
+        });
 
-        grid_view.set_column_spacing(GRID_SPACING);
-        grid_view.set_row_spacing(GRID_SPACING);
-        content_view.addSubview(grid_view.grid_view.as_super());
+        content_view.addSubview(&general_label.text_field);
+        content_view.addSubview(&momentum_checkbox.button);
+        content_view.addSubview(&high_speed_checkbox.button);
+        content_view.addSubview(&logon_item_checkbox.button);
 
-        // Auto Layout
-        let constraints = NSArray::from_retained_slice(&[
-            grid_view
-                .grid_view
-                .leadingAnchor()
-                .constraintEqualToAnchor_constant(&content_view.leadingAnchor(), BUTTON_OFFSET),
-            grid_view
-                .grid_view
-                .topAnchor()
-                .constraintEqualToAnchor_constant(&content_view.topAnchor(), BUTTON_OFFSET),
-        ]);
-        NSLayoutConstraint::activateConstraints(&constraints);
+        Self::apply_general_row_constraints(
+            &content_view,
+            &general_label,
+            &momentum_checkbox,
+            &high_speed_checkbox,
+            &logon_item_checkbox,
+        );
 
-        // Status item
         let status_item = StatusItem::new();
-
-        // Settings bar button
         let status_bar_button = StatusBarButton::new(mtm, &status_item);
         status_bar_button.set_title("⬤");
 
-        // Menu
         let menu = Menu::new(mtm);
 
-        // Quit tab
         let quit_item = menu.add_item_with_title_action_key_equivalent(
             &NSString::from_str("Quit Lapsus"),
             Some(sel!(terminate:)),
@@ -133,11 +295,9 @@ impl UI {
         );
         quit_item.set_target(Some(&app.app));
 
-        // Divider
         let divider = MenuItem::separator_item(mtm);
         menu.add_item(divider);
 
-        // Settings item
         let settings_item = menu.add_item_with_title_action_key_equivalent(
             &NSString::from_str("Settings"),
             Some(sel!(showWindow:)),
@@ -145,12 +305,13 @@ impl UI {
         );
         settings_item.set_target(Some(&window_controller.window_controller));
 
-        // Initialize status item
         status_item.set_menu(menu);
-        return Self {
+        Self {
             _window_controller: window_controller,
             status_item,
-            _buttons: vec![test_button, test_button2],
-        };
+            _momentum_checkbox: momentum_checkbox,
+            _high_speed_checkbox: high_speed_checkbox,
+            _logon_item_checkbox: logon_item_checkbox,
+        }
     }
 }

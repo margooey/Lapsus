@@ -17,11 +17,7 @@ use objc2::{
 use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationDelegate};
 use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSTimer};
 
-use crate::{
-    config::{config, init_config},
-    controller::Controller,
-    ui::UI,
-};
+use crate::{config::init_config, controller::Controller, ui::UI, utils::env_f64};
 
 // https://docs.rs/objc2/latest/objc2/topics/run_loop/index.html#graphical-applications
 struct AppState {
@@ -66,11 +62,11 @@ define_class!(
             let ui = UI::initialize();
             let mut controller = Controller::new();
             controller.start();
-            let min_dt = config().min_dt;
+            let tick_interval = env_f64!("MIN_DT");
 
             let timer = unsafe {
                 NSTimer::scheduledTimerWithTimeInterval_target_selector_userInfo_repeats(
-                    min_dt,
+                    tick_interval,
                     self,
                     sel!(tick:),
                     None,

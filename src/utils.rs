@@ -44,3 +44,10 @@ macro_rules! new_nsrect {
     };
 }
 pub(crate) use new_nsrect;
+
+macro_rules! env_f64 {
+    ($name:literal) => {
+        env!($name).parse::<f64>().unwrap()
+    };
+}
+pub(crate) use env_f64;
