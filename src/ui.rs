@@ -33,6 +33,7 @@ const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 420.0, 140.0);
 const TOP_MARGIN: f64 = 14.0;
 const SIDE_MARGIN: f64 = 20.0;
 const LABEL_CONTROL_GAP: f64 = 6.0;
+const ROW_GAP: f64 = 8.0;
 const LABEL_COLUMN_WIDTH: f64 = 92.0;
 
 use crate::{
@@ -49,6 +50,7 @@ pub struct UI {
     _window_controller: WindowController,
     pub status_item: StatusItem,
     _momentum_checkbox: Checkbox,
+    _high_speed_checkbox: Checkbox,
 }
 
 impl UI {
@@ -69,13 +71,32 @@ impl UI {
         config().min_dt == enabled_min_dt
     }
 
+    fn set_high_speed_enabled(is_enabled: bool) {
+        let mut config = config();
+        let default_gain = env!("TRACKPAD_VELOCITY_GAIN").parse::<f64>().unwrap();
+
+        config.trackpad_velocity_gain = if is_enabled {
+            default_gain * 2.0
+        } else {
+            default_gain
+        };
+    }
+
+    fn high_speed_is_enabled() -> bool {
+        let default_gain = env!("TRACKPAD_VELOCITY_GAIN").parse::<f64>().unwrap();
+        let high_speed_gain = default_gain * 2.0;
+        config().trackpad_velocity_gain == high_speed_gain
+    }
+
     fn apply_general_row_constraints(
         content_view: &Retained<NSView>,
         general_label: &TextField,
         momentum_checkbox: &Checkbox,
+        high_speed_checkbox: &Checkbox,
     ) {
         general_label.set_translates_autoresizing_mask_into_constraints(false);
         momentum_checkbox.set_translates_autoresizing_mask_into_constraints(false);
+        high_speed_checkbox.set_translates_autoresizing_mask_into_constraints(false);
 
         let constraints = NSArray::from_retained_slice(&[
             general_label
@@ -102,6 +123,21 @@ impl UI {
             general_label
                 .first_baseline_anchor()
                 .constraintEqualToAnchor(&momentum_checkbox.button.firstBaselineAnchor()),
+            high_speed_checkbox
+                .leading_anchor()
+                .constraintEqualToAnchor(&momentum_checkbox.leading_anchor()),
+            high_speed_checkbox
+                .top_anchor()
+                .constraintEqualToAnchor_constant(
+                    &momentum_checkbox.button.bottomAnchor(),
+                    ROW_GAP,
+                ),
+            high_speed_checkbox
+                .trailing_anchor()
+                .constraintLessThanOrEqualToAnchor_constant(
+                    &content_view.trailingAnchor(),
+                    -SIDE_MARGIN,
+                ),
         ]);
         NSLayoutConstraint::activateConstraints(&constraints);
     }
@@ -128,6 +164,10 @@ impl UI {
         momentum_checkbox.set_action(mtm, |sender| {
             Self::set_momentum_enabled(sender.state() == NSControlStateValueOn);
         });
+        let mut high_speed_checkbox = Checkbox::init_with_title(mtm, "High speed");
+        high_speed_checkbox.set_action(mtm, |sender| {
+            Self::set_high_speed_enabled(sender.state() == NSControlStateValueOn);
+        });
         let content_view = window_controller
             .window
             .window
@@ -144,11 +184,23 @@ impl UI {
         } else {
             NSControlStateValueOff
         });
+        high_speed_checkbox.size_to_fit();
+        high_speed_checkbox.set_state(if Self::high_speed_is_enabled() {
+            NSControlStateValueOn
+        } else {
+            NSControlStateValueOff
+        });
 
         content_view.addSubview(&general_label.text_field);
         content_view.addSubview(&momentum_checkbox.button);
+        content_view.addSubview(&high_speed_checkbox.button);
 
-        Self::apply_general_row_constraints(&content_view, &general_label, &momentum_checkbox);
+        Self::apply_general_row_constraints(
+            &content_view,
+            &general_label,
+            &momentum_checkbox,
+            &high_speed_checkbox,
+        );
 
         let status_item = StatusItem::new();
         let status_bar_button = StatusBarButton::new(mtm, &status_item);
@@ -178,6 +230,7 @@ impl UI {
             _window_controller: window_controller,
             status_item,
             _momentum_checkbox: momentum_checkbox,
+            _high_speed_checkbox: high_speed_checkbox,
         }
     }
 }

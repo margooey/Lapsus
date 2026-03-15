@@ -11,6 +11,7 @@ core-graphics = "0.25.0"
 objc2-app-kit = { version = "0.3.2", default-features = true }
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["NSArray", "NSDate", "NSEnumerator", "NSNotification", "NSString", "NSTimer", "NSRunLoop"] }
 objc2-core-foundation = { version = "0.3.2" }
+objc2-service-management = "0.3.2"
 log = "0.4.29"
 env_logger = "0.11.8"
 chrono = "0.4.42"
