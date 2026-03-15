@@ -28,6 +28,7 @@ use objc2_app_kit::{
     NSTextAlignment, NSView, NSWindowStyleMask,
 };
 use objc2_foundation::{MainThreadMarker, NSArray, NSPoint, NSRect, NSSize, NSString};
+use objc2_service_management::{SMAppService, SMAppServiceStatus};
 
 const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 420.0, 140.0);
 const TOP_MARGIN: f64 = 14.0;
@@ -51,6 +52,7 @@ pub struct UI {
     pub status_item: StatusItem,
     _momentum_checkbox: Checkbox,
     _high_speed_checkbox: Checkbox,
+    _logon_item_checkbox: Checkbox,
 }
 
 impl UI {
@@ -88,15 +90,42 @@ impl UI {
         config().trackpad_velocity_gain == high_speed_gain
     }
 
+    fn set_logon_item_enabled(is_enabled: bool) {
+        let app_service = unsafe { SMAppService::mainAppService() };
+        let result = if is_enabled {
+            unsafe { app_service.registerAndReturnError() }
+        } else {
+            unsafe { app_service.unregisterAndReturnError() }
+        };
+
+        if let Err(error) = result {
+            log::warn!("failed to update logon item state: {:?}", error);
+        }
+    }
+
+    fn ensure_logon_item_default_enabled() {
+        if !Self::logon_item_is_enabled() {
+            Self::set_logon_item_enabled(true);
+        }
+    }
+
+    fn logon_item_is_enabled() -> bool {
+        let app_service = unsafe { SMAppService::mainAppService() };
+        let status = unsafe { app_service.status() };
+        status == SMAppServiceStatus::Enabled || status == SMAppServiceStatus::RequiresApproval
+    }
+
     fn apply_general_row_constraints(
         content_view: &Retained<NSView>,
         general_label: &TextField,
         momentum_checkbox: &Checkbox,
         high_speed_checkbox: &Checkbox,
+        logon_item_checkbox: &Checkbox,
     ) {
         general_label.set_translates_autoresizing_mask_into_constraints(false);
         momentum_checkbox.set_translates_autoresizing_mask_into_constraints(false);
         high_speed_checkbox.set_translates_autoresizing_mask_into_constraints(false);
+        logon_item_checkbox.set_translates_autoresizing_mask_into_constraints(false);
 
         let constraints = NSArray::from_retained_slice(&[
             general_label
@@ -138,6 +167,21 @@ impl UI {
                     &content_view.trailingAnchor(),
                     -SIDE_MARGIN,
                 ),
+            logon_item_checkbox
+                .leading_anchor()
+                .constraintEqualToAnchor(&momentum_checkbox.leading_anchor()),
+            logon_item_checkbox
+                .top_anchor()
+                .constraintEqualToAnchor_constant(
+                    &high_speed_checkbox.button.bottomAnchor(),
+                    ROW_GAP,
+                ),
+            logon_item_checkbox
+                .trailing_anchor()
+                .constraintLessThanOrEqualToAnchor_constant(
+                    &content_view.trailingAnchor(),
+                    -SIDE_MARGIN,
+                ),
         ]);
         NSLayoutConstraint::activateConstraints(&constraints);
     }
@@ -168,6 +212,10 @@ impl UI {
         high_speed_checkbox.set_action(mtm, |sender| {
             Self::set_high_speed_enabled(sender.state() == NSControlStateValueOn);
         });
+        let mut logon_item_checkbox = Checkbox::init_with_title(mtm, "Launch on login");
+        logon_item_checkbox.set_action(mtm, |sender| {
+            Self::set_logon_item_enabled(sender.state() == NSControlStateValueOn);
+        });
         let content_view = window_controller
             .window
             .window
@@ -190,16 +238,25 @@ impl UI {
         } else {
             NSControlStateValueOff
         });
+        Self::ensure_logon_item_default_enabled();
+        logon_item_checkbox.size_to_fit();
+        logon_item_checkbox.set_state(if Self::logon_item_is_enabled() {
+            NSControlStateValueOn
+        } else {
+            NSControlStateValueOff
+        });
 
         content_view.addSubview(&general_label.text_field);
         content_view.addSubview(&momentum_checkbox.button);
         content_view.addSubview(&high_speed_checkbox.button);
+        content_view.addSubview(&logon_item_checkbox.button);
 
         Self::apply_general_row_constraints(
             &content_view,
             &general_label,
             &momentum_checkbox,
             &high_speed_checkbox,
+            &logon_item_checkbox,
         );
 
         let status_item = StatusItem::new();
@@ -231,6 +288,7 @@ impl UI {
             status_item,
             _momentum_checkbox: momentum_checkbox,
             _high_speed_checkbox: high_speed_checkbox,
+            _logon_item_checkbox: logon_item_checkbox,
         }
     }
 }
