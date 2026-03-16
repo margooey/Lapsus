@@ -10,13 +10,16 @@ Lapsus is an application designed to emulate the feeling of using a trackball. I
 
 You can download Lapsus on the [Releases](https://github.com/margooey/Lapsus/releases) page. You can also download any built artifacts from the [workflow](https://github.com/margooey/Lapsus/actions). 
 
-You can run Lapsus simply by double-clicking on the binary. You can stop the glide behavior by pressing `Ctrl+C` or by killing the terminal session. 
+You can run Lapsus simply by double-clicking on the app. You can stop the glide behavior by quitting the app via the status bar item or by disabling it via the settings pane.
 
-There is currently some work in progress to transition Lapsus into a full macOS .app bundle instead of a CLI app. Part of the work has already been done, which enables the status bar icon and a convenient "Quit Lapsus" option. In the future, you can expect to be able to install Lapsus directly into your Applications folder from a .dmg like a regular app.
+In the future, Lapsus will come with a .dmg installer to easily drag and drop into your Applications folder. Currently, you will need to run the following command after placing it in your Applications folder to bypass macOS Gatekeeper, as the app is signed ad-hoc:
+```
+xattr -r -d com.apple.quarantine ~/Applications/Lapsus.app
+```
 
 <div align="center"><h2>Build</h2></div>
 
-<h3>CLI</h3>
+<h3>CLI (Unsupported, though should still work)</h3>
 
 ```shell
 cargo build --release
@@ -30,7 +33,7 @@ cargo bundle --release
 
 <div align="center"><h2>Debugging</h2></div>
 
-Debugging is currently work in progress as there are ongoing changes to support Lapsus's transition into a full MacOS bundle. If you need to debug, please uncommment the log builder in `main.rs` and build as CLI.
+Debugging is currently work in progress as there are ongoing changes to support Lapsus's transition into a full MacOS bundle. A lot of the debug logic was ripped out of the code, so there is work to be done to add it back in.
 
 <div align="center"><h2>Credits</h2></div>
 
