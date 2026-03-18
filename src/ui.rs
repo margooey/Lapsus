@@ -38,7 +38,7 @@ use objc2_app_kit::{
 use objc2_foundation::{MainThreadMarker, NSArray, NSPoint, NSRect, NSSize, NSString};
 use objc2_service_management::{SMAppService, SMAppServiceStatus};
 
-const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 420.0, 195.0);
+const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 520.0, 195.0);
 const TOP_MARGIN: f64 = 14.0;
 const SIDE_MARGIN: f64 = 20.0;
 const LABEL_CONTROL_GAP: f64 = 6.0;
