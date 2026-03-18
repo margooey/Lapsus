@@ -300,10 +300,10 @@ impl UI {
 
         let settings_item = menu.add_item_with_title_action_key_equivalent(
             &NSString::from_str("Settings"),
-            Some(sel!(showWindow:)),
+            Some(sel!(makeKeyAndOrderFront:)),
             &NSString::from_str(","),
         );
-        settings_item.set_target(Some(&window_controller.window_controller));
+        settings_item.set_target(Some(&window_controller.window.window));
 
         status_item.set_menu(menu);
         Self {
