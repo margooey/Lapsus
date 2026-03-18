@@ -26,6 +26,7 @@ pub struct Config {
     pub logon_item_enabled: bool,
     pub momentum_requires_key: bool,
     pub momentum_activation_key: Option<u16>,
+    pub momentum_activation_modifiers: u64,
 }
 
 impl Config {
@@ -42,6 +43,7 @@ impl Config {
             logon_item_enabled: true,
             momentum_requires_key: false,
             momentum_activation_key: None,
+            momentum_activation_modifiers: 0,
         };
         config.load_persisted_settings();
         config
@@ -87,6 +89,9 @@ impl Config {
                         parse_u16(value, &mut self.momentum_activation_key);
                     }
                 }
+                "momentum_activation_modifiers" => {
+                    parse_u64(value, &mut self.momentum_activation_modifiers)
+                }
                 _ => {}
             }
         }
@@ -105,7 +110,8 @@ min_dt={}\n\
 multi_finger_suppression_deadline={}\n\
 logon_item_enabled={}\n\
 momentum_requires_key={}\n\
-momentum_activation_key={}\n",
+momentum_activation_key={}\n\
+momentum_activation_modifiers={}\n",
             self.maximum_momentum_speed,
             self.trackpad_velocity_gain,
             self.glide_decay_per_second,
@@ -120,6 +126,7 @@ momentum_activation_key={}\n",
                 Some(key) => key.to_string(),
                 None => "none".to_string(),
             },
+            self.momentum_activation_modifiers,
         )
     }
 }
@@ -139,6 +146,12 @@ fn parse_bool(value: &str, target: &mut bool) {
 fn parse_u16(value: &str, target: &mut Option<u16>) {
     if let Ok(parsed) = value.parse::<u16>() {
         *target = Some(parsed);
+    }
+}
+
+fn parse_u64(value: &str, target: &mut u64) {
+    if let Ok(parsed) = value.parse::<u64>() {
+        *target = parsed;
     }
 }
 

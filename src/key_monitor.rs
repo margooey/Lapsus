@@ -1,9 +1,84 @@
-use cidre::cg::EventSrcStateId;
+use cidre::cg::{EventFlags, EventSrcStateId};
 
+/// Returns true if the given keycode is currently held down, system-wide.
 pub fn is_key_held(keycode: u16) -> bool {
     EventSrcStateId::CombinedSession.key_state(keycode)
 }
 
+/// Returns the current modifier flags from the combined session.
+pub fn current_modifier_flags() -> u64 {
+    EventSrcStateId::CombinedSession.flags_state().0
+}
+
+/// Returns true if all the specified modifier flags are currently held.
+pub fn are_modifiers_held(required_flags: u64) -> bool {
+    if required_flags == 0 {
+        return true;
+    }
+    let current = current_modifier_flags();
+    (current & required_flags) == required_flags
+}
+
+/// Checks if a full keybind combo (modifiers + optional key) is currently held.
+pub fn is_combo_held(keycode: Option<u16>, modifiers: u64) -> bool {
+    if !are_modifiers_held(modifiers) {
+        return false;
+    }
+    match keycode {
+        Some(kc) => is_key_held(kc),
+        None => true, // modifier-only combo
+    }
+}
+
+// CGEventFlags constants for display purposes
+const FLAG_SHIFT: u64 = EventFlags::SHIFT.0;
+const FLAG_CTRL: u64 = EventFlags::CTRL.0;
+const FLAG_ALT: u64 = EventFlags::ALT.0;
+const FLAG_CMD: u64 = EventFlags::CMD.0;
+const FLAG_FN: u64 = EventFlags::SECONDARY_FN.0;
+
+/// Masks out device-independent modifier flags only (Shift, Ctrl, Alt, Cmd, Fn).
+pub fn clean_modifier_flags(raw_flags: u64) -> u64 {
+    raw_flags & (FLAG_SHIFT | FLAG_CTRL | FLAG_ALT | FLAG_CMD | FLAG_FN)
+}
+
+/// Returns true if the keycode is a modifier key.
+pub fn is_modifier_keycode(keycode: u16) -> bool {
+    matches!(keycode, 54..=63)
+}
+
+/// Builds a display string for a keybind combo, e.g. "Cmd+A" or "Ctrl+Shift".
+pub fn combo_display_name(keycode: Option<u16>, modifiers: u64) -> String {
+    let mut parts = Vec::new();
+
+    if modifiers & FLAG_CTRL != 0 {
+        parts.push("Ctrl");
+    }
+    if modifiers & FLAG_ALT != 0 {
+        parts.push("Option");
+    }
+    if modifiers & FLAG_SHIFT != 0 {
+        parts.push("Shift");
+    }
+    if modifiers & FLAG_CMD != 0 {
+        parts.push("Cmd");
+    }
+    if modifiers & FLAG_FN != 0 {
+        parts.push("Fn");
+    }
+
+    if let Some(kc) = keycode {
+        parts.push(keycode_name(kc));
+    }
+
+    if parts.is_empty() {
+        "Click to set".to_string()
+    } else {
+        parts.join("+")
+    }
+}
+
+/// Returns a human-readable name for a macOS virtual keycode.
 pub fn keycode_name(keycode: u16) -> &'static str {
     match keycode {
         0 => "A",

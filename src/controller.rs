@@ -107,9 +107,14 @@ impl Controller {
             // configured activation key is currently held down.
             let activation_key_missing = {
                 let cfg = config();
-                cfg.momentum_requires_key && match cfg.momentum_activation_key {
-                    Some(keycode) => !key_monitor::is_key_held(keycode),
-                    None => true,
+                cfg.momentum_requires_key && {
+                    let has_binding = cfg.momentum_activation_key.is_some()
+                        || cfg.momentum_activation_modifiers != 0;
+                    !has_binding
+                        || !key_monitor::is_combo_held(
+                            cfg.momentum_activation_key,
+                            cfg.momentum_activation_modifiers,
+                        )
                 }
             };
             if activation_key_missing {

@@ -185,9 +185,33 @@ impl UI {
     }
 
     fn keybind_display_title() -> String {
-        match config().momentum_activation_key {
-            Some(keycode) => key_monitor::keycode_name(keycode).to_string(),
-            None => "Click to set".to_string(),
+        let cfg = config();
+        key_monitor::combo_display_name(
+            cfg.momentum_activation_key,
+            cfg.momentum_activation_modifiers,
+        )
+    }
+
+    fn finish_keybind_capture(
+        button: &NSButton,
+        keycode: Option<u16>,
+        modifiers: u64,
+    ) {
+        {
+            let mut cfg = config();
+            cfg.momentum_activation_key = keycode;
+            cfg.momentum_activation_modifiers = modifiers;
+        }
+        crate::config::persist_config();
+
+        let display = key_monitor::combo_display_name(keycode, modifiers);
+        button.setTitle(&NSString::from_str(&display));
+        CAPTURING_KEYBIND.set(false);
+
+        if let Ok(mut monitor) = KEYBIND_MONITOR.lock() {
+            if let Some(m) = monitor.take() {
+                unsafe { NSEvent::removeMonitor(&m.0) };
+            }
         }
     }
 
@@ -201,43 +225,40 @@ impl UI {
         let button = button.retain();
         let mask = NSEventMask::KeyDown | NSEventMask::FlagsChanged;
 
+        // Track the highest modifier state seen so far, so that releasing all
+        // modifiers without pressing a regular key captures a modifier-only bind.
+        let pending_modifiers = Cell::new(0u64);
+
         let block = RcBlock::new(move |event_ptr: NonNull<NSEvent>| -> *mut NSEvent {
             let event = unsafe { event_ptr.as_ref() };
             let event_type = event.r#type();
             let keycode = event.keyCode();
+            let raw_flags = event.modifierFlags().0 as u64;
+            let modifiers = key_monitor::clean_modifier_flags(raw_flags);
 
-            // For FlagsChanged, only capture if a modifier was pressed (not released)
-            if event_type == NSEventType::FlagsChanged {
-                let flags = event.modifierFlags();
-                if let Some(flag) = modifier_flag_for_keycode(keycode) {
-                    if !flags.contains(flag) {
-                        // Modifier released, not pressed — ignore
-                        return event_ptr.as_ptr();
+            match event_type {
+                NSEventType::KeyDown => {
+                    // Regular key pressed (possibly with modifiers) — capture full combo
+                    pending_modifiers.set(0);
+                    Self::finish_keybind_capture(&button, Some(keycode), modifiers);
+                    std::ptr::null_mut()
+                }
+                NSEventType::FlagsChanged => {
+                    if modifiers != 0 {
+                        // Modifier pressed or added — accumulate and update button text
+                        pending_modifiers.set(modifiers);
+                        let preview = key_monitor::combo_display_name(None, modifiers);
+                        button.setTitle(&NSString::from_str(&format!("{}...", preview)));
+                    } else if pending_modifiers.get() != 0 {
+                        // All modifiers released — finalize modifier-only bind
+                        let final_mods = pending_modifiers.get();
+                        pending_modifiers.set(0);
+                        Self::finish_keybind_capture(&button, None, final_mods);
                     }
-                } else {
-                    return event_ptr.as_ptr();
+                    event_ptr.as_ptr()
                 }
+                _ => event_ptr.as_ptr(),
             }
-
-            // Capture this key
-            {
-                let mut cfg = config();
-                cfg.momentum_activation_key = Some(keycode);
-            }
-            crate::config::persist_config();
-
-            button.setTitle(&NSString::from_str(key_monitor::keycode_name(keycode)));
-            CAPTURING_KEYBIND.set(false);
-
-            // Remove the local monitor
-            if let Ok(mut monitor) = KEYBIND_MONITOR.lock() {
-                if let Some(m) = monitor.take() {
-                    unsafe { NSEvent::removeMonitor(&m.0) };
-                }
-            }
-
-            // Swallow the event so it doesn't propagate
-            std::ptr::null_mut()
         });
 
         // Safety: the block handles all event types in the mask and returns
@@ -525,15 +546,3 @@ impl UI {
     }
 }
 
-use objc2_app_kit::NSEventModifierFlags;
-
-fn modifier_flag_for_keycode(keycode: u16) -> Option<NSEventModifierFlags> {
-    match keycode {
-        56 | 60 => Some(NSEventModifierFlags::Shift),
-        59 | 62 => Some(NSEventModifierFlags::Control),
-        58 | 61 => Some(NSEventModifierFlags::Option),
-        55 | 54 => Some(NSEventModifierFlags::Command),
-        63 => Some(NSEventModifierFlags::Function),
-        _ => None,
-    }
-}
