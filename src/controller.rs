@@ -1,4 +1,5 @@
 use crate::config::config;
+use crate::key_monitor;
 use crate::utils::{max, union_rect};
 use crate::{engine, trackpad};
 use cidre::cg::{Float, Point, Rect, Size, Vector};
@@ -100,10 +101,29 @@ impl Controller {
             if self.touch_ended_recently {
                 log::debug!("touch end detected");
             }
+            let mut suppress_glide = self.monitor.should_suppress_glide();
+
+            // When momentum_requires_key is enabled, suppress glide unless the
+            // configured activation key is currently held down.
+            let activation_key_missing = {
+                let cfg = config();
+                cfg.momentum_requires_key && match cfg.momentum_activation_key {
+                    Some(keycode) => !key_monitor::is_key_held(keycode),
+                    None => true,
+                }
+            };
+            if activation_key_missing {
+                suppress_glide = true;
+                // Also cancel any in-progress glide
+                if self.engine.state.is_gliding {
+                    self.engine.set_gliding(false);
+                }
+            }
+
             self.engine.handle_no_touch(
                 physical_position,
                 delta_time,
-                self.monitor.should_suppress_glide(),
+                suppress_glide,
                 self.touch_ended_recently,
             );
         }

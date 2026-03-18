@@ -24,6 +24,8 @@ pub struct Config {
     pub min_dt: f64,
     pub multi_finger_suppression_deadline: f64,
     pub logon_item_enabled: bool,
+    pub momentum_requires_key: bool,
+    pub momentum_activation_key: Option<u16>,
 }
 
 impl Config {
@@ -38,6 +40,8 @@ impl Config {
             min_dt: env_f64!("MIN_DT"),
             multi_finger_suppression_deadline: env_f64!("MULTI_FINGER_SUPPRESSION_DEADLINE"),
             logon_item_enabled: true,
+            momentum_requires_key: false,
+            momentum_activation_key: None,
         };
         config.load_persisted_settings();
         config
@@ -75,6 +79,14 @@ impl Config {
                     parse_f64(value, &mut self.multi_finger_suppression_deadline)
                 }
                 "logon_item_enabled" => parse_bool(value, &mut self.logon_item_enabled),
+                "momentum_requires_key" => parse_bool(value, &mut self.momentum_requires_key),
+                "momentum_activation_key" => {
+                    if value == "none" {
+                        self.momentum_activation_key = None;
+                    } else {
+                        parse_u16(value, &mut self.momentum_activation_key);
+                    }
+                }
                 _ => {}
             }
         }
@@ -91,7 +103,9 @@ glide_stop_speed_factor={}\n\
 velocity_smoothing={}\n\
 min_dt={}\n\
 multi_finger_suppression_deadline={}\n\
-logon_item_enabled={}\n",
+logon_item_enabled={}\n\
+momentum_requires_key={}\n\
+momentum_activation_key={}\n",
             self.maximum_momentum_speed,
             self.trackpad_velocity_gain,
             self.glide_decay_per_second,
@@ -101,6 +115,11 @@ logon_item_enabled={}\n",
             self.min_dt,
             self.multi_finger_suppression_deadline,
             self.logon_item_enabled,
+            self.momentum_requires_key,
+            match self.momentum_activation_key {
+                Some(key) => key.to_string(),
+                None => "none".to_string(),
+            },
         )
     }
 }
@@ -114,6 +133,12 @@ fn parse_f64(value: &str, target: &mut f64) {
 fn parse_bool(value: &str, target: &mut bool) {
     if let Ok(parsed) = value.parse::<bool>() {
         *target = parsed;
+    }
+}
+
+fn parse_u16(value: &str, target: &mut Option<u16>) {
+    if let Ok(parsed) = value.parse::<u16>() {
+        *target = Some(parsed);
     }
 }
 

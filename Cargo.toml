@@ -2,13 +2,13 @@
 
 [package]
 name = "Lapsus"
-version = "2.0.2"
+version = "2.1.2"
 edition = "2024"
 
 [dependencies]
 cidre = { version = "0.11.5", default-features = false, features = ["cg"]}
 core-graphics = "0.25.0"
-objc2-app-kit = { version = "0.3.2", default-features = true }
+objc2-app-kit = { version = "0.3.2", default-features = true, features = ["block2"] }
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["NSArray", "NSDate", "NSEnumerator", "NSNotification", "NSString", "NSTimer", "NSRunLoop"] }
 objc2-core-foundation = { version = "0.3.2" }
 objc2-service-management = "0.3.2"
@@ -16,6 +16,7 @@ log = "0.4.29"
 env_logger = "0.11.8"
 chrono = "0.4.42"
 objc2 = { version = "0.6.3", default-features = false, features = ["std"] }
+block2 = "0.6.2"
 
 [dependencies.macos_multitouch]
 path = "macos-multitouch"

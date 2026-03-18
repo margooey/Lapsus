@@ -4,8 +4,9 @@ version = 4
 
 [[package]]
 name = "Lapsus"
-version = "2.0.2"
+version = "2.1.2"
 dependencies = [
+ "block2",
  "chrono",
  "cidre",
  "core-graphics",

@@ -22,30 +22,62 @@ pub mod view;
 pub mod window;
 pub mod window_controller;
 
-use objc2::{rc::Retained, sel};
+use std::cell::Cell;
+use std::ptr::NonNull;
+use std::sync::Mutex;
+
+use block2::RcBlock;
+use objc2::rc::Retained;
+use objc2::runtime::AnyObject;
+use objc2::{sel, Message};
 use objc2_app_kit::{
-    NSBackingStoreType, NSControlStateValueOff, NSControlStateValueOn, NSFont, NSLayoutConstraint,
-    NSTextAlignment, NSView, NSWindowStyleMask,
+    NSBackingStoreType, NSBezelStyle, NSButton, NSControlStateValueOff, NSControlStateValueOn,
+    NSEvent, NSEventMask, NSEventType, NSFont, NSLayoutConstraint, NSTextAlignment, NSView,
+    NSWindowStyleMask,
 };
 use objc2_foundation::{MainThreadMarker, NSArray, NSPoint, NSRect, NSSize, NSString};
 use objc2_service_management::{SMAppService, SMAppServiceStatus};
 
-const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 420.0, 140.0);
+const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 420.0, 195.0);
 const TOP_MARGIN: f64 = 14.0;
 const SIDE_MARGIN: f64 = 20.0;
 const LABEL_CONTROL_GAP: f64 = 6.0;
 const ROW_GAP: f64 = 8.0;
+const SECTION_GAP: f64 = 16.0;
 const LABEL_COLUMN_WIDTH: f64 = 92.0;
+const KEYBIND_BUTTON_GAP: f64 = 6.0;
 
 use crate::{
     config::config,
+    key_monitor,
     ui::{
-        app::App, checkbox::Checkbox, menu::Menu, menu_item::MenuItem,
+        app::App, button::Button, checkbox::Checkbox, menu::Menu, menu_item::MenuItem,
         status_bar_button::StatusBarButton, status_item::StatusItem, text_field::TextField,
         window::Window, window_controller::WindowController,
     },
     utils::{env_f64, new_nsrect},
 };
+
+/// Wrapper to allow storing `Retained<AnyObject>` in a static.
+struct SendRetained(Retained<AnyObject>);
+unsafe impl Send for SendRetained {}
+unsafe impl Sync for SendRetained {}
+
+impl std::ops::Deref for SendRetained {
+    type Target = AnyObject;
+    fn deref(&self) -> &AnyObject {
+        &self.0
+    }
+}
+
+// Holds the local event monitor handle during keybind capture so it can be
+// removed after the key is captured.
+static KEYBIND_MONITOR: Mutex<Option<SendRetained>> = Mutex::new(None);
+
+// Thread-local flag: true while we are waiting for the user to press a key.
+thread_local! {
+    static CAPTURING_KEYBIND: Cell<bool> = const { Cell::new(false) };
+}
 
 pub struct UI {
     _window_controller: WindowController,
@@ -53,6 +85,8 @@ pub struct UI {
     _momentum_checkbox: Checkbox,
     _high_speed_checkbox: Checkbox,
     _logon_item_checkbox: Checkbox,
+    _require_key_checkbox: Checkbox,
+    _keybind_button: Button,
 }
 
 impl UI {
@@ -138,6 +172,84 @@ impl UI {
         config().logon_item_enabled
     }
 
+    fn set_require_key_enabled(is_enabled: bool) {
+        {
+            let mut config = config();
+            config.momentum_requires_key = is_enabled;
+        }
+        crate::config::persist_config();
+    }
+
+    fn require_key_is_enabled() -> bool {
+        config().momentum_requires_key
+    }
+
+    fn keybind_display_title() -> String {
+        match config().momentum_activation_key {
+            Some(keycode) => key_monitor::keycode_name(keycode).to_string(),
+            None => "Click to set".to_string(),
+        }
+    }
+
+    fn begin_keybind_capture(button: &NSButton) {
+        if CAPTURING_KEYBIND.get() {
+            return;
+        }
+        CAPTURING_KEYBIND.set(true);
+        button.setTitle(&NSString::from_str("Press a key..."));
+
+        let button = button.retain();
+        let mask = NSEventMask::KeyDown | NSEventMask::FlagsChanged;
+
+        let block = RcBlock::new(move |event_ptr: NonNull<NSEvent>| -> *mut NSEvent {
+            let event = unsafe { event_ptr.as_ref() };
+            let event_type = event.r#type();
+            let keycode = event.keyCode();
+
+            // For FlagsChanged, only capture if a modifier was pressed (not released)
+            if event_type == NSEventType::FlagsChanged {
+                let flags = event.modifierFlags();
+                if let Some(flag) = modifier_flag_for_keycode(keycode) {
+                    if !flags.contains(flag) {
+                        // Modifier released, not pressed — ignore
+                        return event_ptr.as_ptr();
+                    }
+                } else {
+                    return event_ptr.as_ptr();
+                }
+            }
+
+            // Capture this key
+            {
+                let mut cfg = config();
+                cfg.momentum_activation_key = Some(keycode);
+            }
+            crate::config::persist_config();
+
+            button.setTitle(&NSString::from_str(key_monitor::keycode_name(keycode)));
+            CAPTURING_KEYBIND.set(false);
+
+            // Remove the local monitor
+            if let Ok(mut monitor) = KEYBIND_MONITOR.lock() {
+                if let Some(m) = monitor.take() {
+                    unsafe { NSEvent::removeMonitor(&m.0) };
+                }
+            }
+
+            // Swallow the event so it doesn't propagate
+            std::ptr::null_mut()
+        });
+
+        // Safety: the block handles all event types in the mask and returns
+        // either the event pointer or null to swallow it.
+        let monitor = unsafe {
+            NSEvent::addLocalMonitorForEventsMatchingMask_handler(mask, &block)
+        };
+        if let Ok(mut m) = KEYBIND_MONITOR.lock() {
+            *m = monitor.map(SendRetained);
+        }
+    }
+
     fn apply_general_row_constraints(
         content_view: &Retained<NSView>,
         general_label: &TextField,
@@ -209,6 +321,66 @@ impl UI {
         NSLayoutConstraint::activateConstraints(&constraints);
     }
 
+    fn apply_activation_key_row_constraints(
+        content_view: &Retained<NSView>,
+        activation_label: &TextField,
+        require_key_checkbox: &Checkbox,
+        keybind_button: &Button,
+        logon_item_checkbox: &Checkbox,
+    ) {
+        activation_label.set_translates_autoresizing_mask_into_constraints(false);
+        require_key_checkbox.set_translates_autoresizing_mask_into_constraints(false);
+        keybind_button
+            .button
+            .setTranslatesAutoresizingMaskIntoConstraints(false);
+
+        let constraints = NSArray::from_retained_slice(&[
+            // Label
+            activation_label
+                .leading_anchor()
+                .constraintEqualToAnchor_constant(&content_view.leadingAnchor(), SIDE_MARGIN),
+            activation_label
+                .width_anchor()
+                .constraintEqualToConstant(LABEL_COLUMN_WIDTH),
+            // Checkbox
+            require_key_checkbox
+                .leading_anchor()
+                .constraintEqualToAnchor_constant(
+                    &activation_label.text_field.trailingAnchor(),
+                    LABEL_CONTROL_GAP,
+                ),
+            require_key_checkbox
+                .top_anchor()
+                .constraintEqualToAnchor_constant(
+                    &logon_item_checkbox.button.bottomAnchor(),
+                    SECTION_GAP,
+                ),
+            activation_label
+                .first_baseline_anchor()
+                .constraintEqualToAnchor(&require_key_checkbox.button.firstBaselineAnchor()),
+            // Keybind button — to the right of the checkbox
+            keybind_button
+                .button
+                .leadingAnchor()
+                .constraintEqualToAnchor_constant(
+                    &require_key_checkbox.button.trailingAnchor(),
+                    KEYBIND_BUTTON_GAP,
+                ),
+            keybind_button
+                .button
+                .firstBaselineAnchor()
+                .constraintEqualToAnchor(&require_key_checkbox.button.firstBaselineAnchor()),
+            keybind_button
+                .button
+                .trailingAnchor()
+                .constraintLessThanOrEqualToAnchor_constant(
+                    &content_view.trailingAnchor(),
+                    -SIDE_MARGIN,
+                ),
+        ]);
+        NSLayoutConstraint::activateConstraints(&constraints);
+    }
+
     pub fn initialize() -> Self {
         let mtm = MainThreadMarker::new().expect("must be on the main thread");
         let app = App::new(mtm);
@@ -239,6 +411,21 @@ impl UI {
         logon_item_checkbox.set_action(mtm, |sender| {
             Self::set_logon_item_enabled(sender.state() == NSControlStateValueOn);
         });
+
+        // Activation key controls
+        let mut require_key_checkbox =
+            Checkbox::init_with_title(mtm, "Require key for momentum");
+        require_key_checkbox.set_action(mtm, |sender| {
+            Self::set_require_key_enabled(sender.state() == NSControlStateValueOn);
+        });
+
+        let mut keybind_button = Button::init(mtm);
+        keybind_button.set_title(&Self::keybind_display_title());
+        keybind_button.button.setBezelStyle(NSBezelStyle::Push);
+        keybind_button.set_action(mtm, |sender| {
+            Self::begin_keybind_capture(sender);
+        });
+
         let content_view = window_controller
             .window
             .window
@@ -246,8 +433,12 @@ impl UI {
             .expect("window should have a content view");
 
         let general_label = TextField::label(mtm, "General:");
-        general_label.set_font(label_font);
+        general_label.set_font(label_font.clone());
         general_label.set_alignment(NSTextAlignment::Right);
+
+        let activation_label = TextField::label(mtm, "Activation:");
+        activation_label.set_font(label_font);
+        activation_label.set_alignment(NSTextAlignment::Right);
 
         momentum_checkbox.size_to_fit();
         momentum_checkbox.set_state(if Self::momentum_is_enabled() {
@@ -268,17 +459,33 @@ impl UI {
         } else {
             NSControlStateValueOff
         });
+        require_key_checkbox.size_to_fit();
+        require_key_checkbox.set_state(if Self::require_key_is_enabled() {
+            NSControlStateValueOn
+        } else {
+            NSControlStateValueOff
+        });
 
         content_view.addSubview(&general_label.text_field);
         content_view.addSubview(&momentum_checkbox.button);
         content_view.addSubview(&high_speed_checkbox.button);
         content_view.addSubview(&logon_item_checkbox.button);
+        content_view.addSubview(&activation_label.text_field);
+        content_view.addSubview(&require_key_checkbox.button);
+        content_view.addSubview(&keybind_button.button);
 
         Self::apply_general_row_constraints(
             &content_view,
             &general_label,
             &momentum_checkbox,
             &high_speed_checkbox,
+            &logon_item_checkbox,
+        );
+        Self::apply_activation_key_row_constraints(
+            &content_view,
+            &activation_label,
+            &require_key_checkbox,
+            &keybind_button,
             &logon_item_checkbox,
         );
 
@@ -312,6 +519,21 @@ impl UI {
             _momentum_checkbox: momentum_checkbox,
             _high_speed_checkbox: high_speed_checkbox,
             _logon_item_checkbox: logon_item_checkbox,
+            _require_key_checkbox: require_key_checkbox,
+            _keybind_button: keybind_button,
         }
+    }
+}
+
+use objc2_app_kit::NSEventModifierFlags;
+
+fn modifier_flag_for_keycode(keycode: u16) -> Option<NSEventModifierFlags> {
+    match keycode {
+        56 | 60 => Some(NSEventModifierFlags::Shift),
+        59 | 62 => Some(NSEventModifierFlags::Control),
+        58 | 61 => Some(NSEventModifierFlags::Option),
+        55 | 54 => Some(NSEventModifierFlags::Command),
+        63 => Some(NSEventModifierFlags::Function),
+        _ => None,
     }
 }

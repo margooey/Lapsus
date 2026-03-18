@@ -1,6 +1,7 @@
 pub mod config;
 pub mod controller;
 pub mod engine;
+pub mod key_monitor;
 pub mod tests;
 pub mod trackpad;
 pub mod ui;
