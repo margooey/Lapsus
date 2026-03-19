@@ -57,43 +57,22 @@ pub struct UI {
 
 impl UI {
     fn set_momentum_enabled(is_enabled: bool) {
-        {
-            let mut config = config();
-            let enabled_min_dt = env_f64!("MIN_DT");
-            let disabled_min_dt = 1.0;
-
-            config.min_dt = if is_enabled {
-                enabled_min_dt
-            } else {
-                disabled_min_dt
-            };
-        }
+        config().min_dt = if is_enabled { env_f64!("MIN_DT") } else { 1.0 };
         crate::config::persist_config();
     }
 
     fn momentum_is_enabled() -> bool {
-        let enabled_min_dt = env_f64!("MIN_DT");
-        config().min_dt == enabled_min_dt
+        config().min_dt == env_f64!("MIN_DT")
     }
 
     fn set_high_speed_enabled(is_enabled: bool) {
-        {
-            let mut config = config();
-            let default_gain = env_f64!("TRACKPAD_VELOCITY_GAIN");
-
-            config.trackpad_velocity_gain = if is_enabled {
-                default_gain * 2.0
-            } else {
-                default_gain
-            };
-        }
+        let default_gain = env_f64!("TRACKPAD_VELOCITY_GAIN");
+        config().trackpad_velocity_gain = if is_enabled { default_gain * 2.0 } else { default_gain };
         crate::config::persist_config();
     }
 
     fn high_speed_is_enabled() -> bool {
-        let default_gain = env_f64!("TRACKPAD_VELOCITY_GAIN");
-        let high_speed_gain = default_gain * 2.0;
-        config().trackpad_velocity_gain == high_speed_gain
+        config().trackpad_velocity_gain == env_f64!("TRACKPAD_VELOCITY_GAIN") * 2.0
     }
 
     fn update_logon_item_registration(is_enabled: bool) {
@@ -123,10 +102,7 @@ impl UI {
 
     fn set_logon_item_enabled(is_enabled: bool) {
         Self::update_logon_item_registration(is_enabled);
-        {
-            let mut config = config();
-            config.logon_item_enabled = is_enabled;
-        }
+        config().logon_item_enabled = is_enabled;
         crate::config::persist_config();
     }
 
