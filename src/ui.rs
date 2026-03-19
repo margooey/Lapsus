@@ -42,78 +42,70 @@ use crate::{
     ui::{
         app::App, checkbox::Checkbox, menu::Menu, menu_item::MenuItem,
         status_bar_button::StatusBarButton, status_item::StatusItem, text_field::TextField,
-        window::Window, window_controller::WindowController,
+        window::Window,
     },
     utils::{env_f64, new_nsrect},
 };
 
 pub struct UI {
-    _window_controller: WindowController,
+    _window: Window,
     pub status_item: StatusItem,
     _momentum_checkbox: Checkbox,
     _high_speed_checkbox: Checkbox,
     _logon_item_checkbox: Checkbox,
 }
 
+fn control_state(enabled: bool) -> objc2_foundation::NSInteger {
+    if enabled {
+        NSControlStateValueOn
+    } else {
+        NSControlStateValueOff
+    }
+}
+
 impl UI {
     fn set_momentum_enabled(is_enabled: bool) {
-        {
-            let mut config = config();
-            let enabled_min_dt = env_f64!("MIN_DT");
-            let disabled_min_dt = 1.0;
-
-            config.min_dt = if is_enabled {
-                enabled_min_dt
-            } else {
-                disabled_min_dt
-            };
-        }
+        config().min_dt = if is_enabled { env_f64!("MIN_DT") } else { 1.0 };
         crate::config::persist_config();
     }
 
     fn momentum_is_enabled() -> bool {
-        let enabled_min_dt = env_f64!("MIN_DT");
-        config().min_dt == enabled_min_dt
+        config().min_dt == env_f64!("MIN_DT")
     }
 
     fn set_high_speed_enabled(is_enabled: bool) {
-        {
-            let mut config = config();
-            let default_gain = env_f64!("TRACKPAD_VELOCITY_GAIN");
-
-            config.trackpad_velocity_gain = if is_enabled {
-                default_gain * 2.0
-            } else {
-                default_gain
-            };
-        }
+        let default_gain = env_f64!("TRACKPAD_VELOCITY_GAIN");
+        config().trackpad_velocity_gain = if is_enabled {
+            default_gain * 2.0
+        } else {
+            default_gain
+        };
         crate::config::persist_config();
     }
 
     fn high_speed_is_enabled() -> bool {
-        let default_gain = env_f64!("TRACKPAD_VELOCITY_GAIN");
-        let high_speed_gain = default_gain * 2.0;
-        config().trackpad_velocity_gain == high_speed_gain
+        config().trackpad_velocity_gain == env_f64!("TRACKPAD_VELOCITY_GAIN") * 2.0
     }
 
     fn update_logon_item_registration(is_enabled: bool) {
         let app_service = unsafe { SMAppService::mainAppService() };
         let status = unsafe { app_service.status() };
 
-        if is_enabled
-            && (status == SMAppServiceStatus::Enabled
-                || status == SMAppServiceStatus::RequiresApproval)
-        {
-            return;
-        }
-        if !is_enabled && status == SMAppServiceStatus::NotRegistered {
+        let already_set = match (is_enabled, status) {
+            (true, SMAppServiceStatus::Enabled | SMAppServiceStatus::RequiresApproval) => true,
+            (false, SMAppServiceStatus::NotRegistered) => true,
+            _ => false,
+        };
+        if already_set {
             return;
         }
 
-        let result = if is_enabled {
-            unsafe { app_service.registerAndReturnError() }
-        } else {
-            unsafe { app_service.unregisterAndReturnError() }
+        let result = unsafe {
+            if is_enabled {
+                app_service.registerAndReturnError()
+            } else {
+                app_service.unregisterAndReturnError()
+            }
         };
 
         if let Err(error) = result {
@@ -123,10 +115,7 @@ impl UI {
 
     fn set_logon_item_enabled(is_enabled: bool) {
         Self::update_logon_item_registration(is_enabled);
-        {
-            let mut config = config();
-            config.logon_item_enabled = is_enabled;
-        }
+        config().logon_item_enabled = is_enabled;
         crate::config::persist_config();
     }
 
@@ -225,8 +214,6 @@ impl UI {
         window.set_title("Settings");
         window.center();
 
-        let window_controller = WindowController::new(mtm, window);
-
         let mut momentum_checkbox = Checkbox::init_with_title(mtm, "Enable momentum");
         momentum_checkbox.set_action(mtm, |sender| {
             Self::set_momentum_enabled(sender.state() == NSControlStateValueOn);
@@ -239,8 +226,7 @@ impl UI {
         logon_item_checkbox.set_action(mtm, |sender| {
             Self::set_logon_item_enabled(sender.state() == NSControlStateValueOn);
         });
-        let content_view = window_controller
-            .window
+        let content_view = window
             .window
             .contentView()
             .expect("window should have a content view");
@@ -250,24 +236,12 @@ impl UI {
         general_label.set_alignment(NSTextAlignment::Right);
 
         momentum_checkbox.size_to_fit();
-        momentum_checkbox.set_state(if Self::momentum_is_enabled() {
-            NSControlStateValueOn
-        } else {
-            NSControlStateValueOff
-        });
+        momentum_checkbox.set_state(control_state(Self::momentum_is_enabled()));
         high_speed_checkbox.size_to_fit();
-        high_speed_checkbox.set_state(if Self::high_speed_is_enabled() {
-            NSControlStateValueOn
-        } else {
-            NSControlStateValueOff
-        });
+        high_speed_checkbox.set_state(control_state(Self::high_speed_is_enabled()));
         Self::apply_saved_logon_item_setting();
         logon_item_checkbox.size_to_fit();
-        logon_item_checkbox.set_state(if Self::logon_item_is_enabled() {
-            NSControlStateValueOn
-        } else {
-            NSControlStateValueOff
-        });
+        logon_item_checkbox.set_state(control_state(Self::logon_item_is_enabled()));
 
         content_view.addSubview(&general_label.text_field);
         content_view.addSubview(&momentum_checkbox.button);
@@ -303,11 +277,11 @@ impl UI {
             Some(sel!(makeKeyAndOrderFront:)),
             &NSString::from_str(","),
         );
-        settings_item.set_target(Some(&window_controller.window.window));
+        settings_item.set_target(Some(&window.window));
 
         status_item.set_menu(menu);
         Self {
-            _window_controller: window_controller,
+            _window: window,
             status_item,
             _momentum_checkbox: momentum_checkbox,
             _high_speed_checkbox: high_speed_checkbox,

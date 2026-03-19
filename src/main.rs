@@ -93,6 +93,7 @@ define_class!(
 );
 
 fn main() {
+    env_logger::init();
     init_config();
 
     let mtm = MainThreadMarker::new().expect("must be on the main thread");
