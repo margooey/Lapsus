@@ -1,8 +1,11 @@
 use objc2::{
-    MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::{Allocated, Retained},
+    MainThreadMarker, MainThreadOnly, define_class, msg_send,
+    rc::{Allocated, Retained},
 };
 use objc2_app_kit::{NSApplication, NSBackingStoreType, NSWindow, NSWindowStyleMask};
-use objc2_foundation::{MainThreadMarker as FMTMarker, NSObject, NSObjectProtocol, NSRect, NSString};
+use objc2_foundation::{
+    MainThreadMarker as FMTMarker, NSObject, NSObjectProtocol, NSRect, NSString,
+};
 
 use crate::ui::view::View;
 
@@ -47,7 +50,9 @@ impl Window {
                 defer: flag,
             ]
         };
-        Self { window: window.into_super() }
+        Self {
+            window: window.into_super(),
+        }
     }
 
     pub fn set_title(&self, string: &str) {

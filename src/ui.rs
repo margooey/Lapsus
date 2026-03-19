@@ -56,7 +56,11 @@ pub struct UI {
 }
 
 fn control_state(enabled: bool) -> objc2_foundation::NSInteger {
-    if enabled { NSControlStateValueOn } else { NSControlStateValueOff }
+    if enabled {
+        NSControlStateValueOn
+    } else {
+        NSControlStateValueOff
+    }
 }
 
 impl UI {
@@ -71,7 +75,11 @@ impl UI {
 
     fn set_high_speed_enabled(is_enabled: bool) {
         let default_gain = env_f64!("TRACKPAD_VELOCITY_GAIN");
-        config().trackpad_velocity_gain = if is_enabled { default_gain * 2.0 } else { default_gain };
+        config().trackpad_velocity_gain = if is_enabled {
+            default_gain * 2.0
+        } else {
+            default_gain
+        };
         crate::config::persist_config();
     }
 
@@ -93,8 +101,11 @@ impl UI {
         }
 
         let result = unsafe {
-            if is_enabled { app_service.registerAndReturnError() }
-            else { app_service.unregisterAndReturnError() }
+            if is_enabled {
+                app_service.registerAndReturnError()
+            } else {
+                app_service.unregisterAndReturnError()
+            }
         };
 
         if let Err(error) = result {
