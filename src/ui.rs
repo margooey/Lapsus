@@ -83,20 +83,18 @@ impl UI {
         let app_service = unsafe { SMAppService::mainAppService() };
         let status = unsafe { app_service.status() };
 
-        if is_enabled
-            && (status == SMAppServiceStatus::Enabled
-                || status == SMAppServiceStatus::RequiresApproval)
-        {
-            return;
-        }
-        if !is_enabled && status == SMAppServiceStatus::NotRegistered {
+        let already_set = match (is_enabled, status) {
+            (true, SMAppServiceStatus::Enabled | SMAppServiceStatus::RequiresApproval) => true,
+            (false, SMAppServiceStatus::NotRegistered) => true,
+            _ => false,
+        };
+        if already_set {
             return;
         }
 
-        let result = if is_enabled {
-            unsafe { app_service.registerAndReturnError() }
-        } else {
-            unsafe { app_service.unregisterAndReturnError() }
+        let result = unsafe {
+            if is_enabled { app_service.registerAndReturnError() }
+            else { app_service.unregisterAndReturnError() }
         };
 
         if let Err(error) = result {
