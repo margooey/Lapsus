@@ -1,5 +1,5 @@
-use objc2::{MainThreadMarker, rc::Retained};
-use objc2_app_kit::NSStatusBarButton;
+use objc2::{AnyThread, MainThreadMarker, rc::Retained};
+use objc2_app_kit::{NSImage, NSStatusBarButton};
 use objc2_foundation::NSString;
 
 use crate::ui::status_item::StatusItem;
@@ -16,5 +16,13 @@ impl StatusBarButton {
 
     pub fn set_title(&self, title: &str) {
         self.status_bar_button.setTitle(&NSString::from_str(title));
+    }
+
+    pub fn set_image(&self, image: &str) {
+        let image = NSImage::initWithContentsOfFile(NSImage::alloc(), &NSString::from_str(image ));
+        if let Some(ref img) = image {
+            img.setSize(objc2_core_foundation::CGSize::new(18.0, 18.0));
+        }
+        self.status_bar_button.setImage(image.as_deref());
     }
 }

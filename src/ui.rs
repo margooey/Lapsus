@@ -258,7 +258,7 @@ impl UI {
 
         let status_item = StatusItem::new();
         let status_bar_button = StatusBarButton::new(mtm, &status_item);
-        status_bar_button.set_title("⬤");
+        status_bar_button.set_image("./assets/cursoroutline_center.svg");
 
         let menu = Menu::new(mtm);
 
