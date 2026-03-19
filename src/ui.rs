@@ -42,13 +42,13 @@ use crate::{
     ui::{
         app::App, checkbox::Checkbox, menu::Menu, menu_item::MenuItem,
         status_bar_button::StatusBarButton, status_item::StatusItem, text_field::TextField,
-        window::Window, window_controller::WindowController,
+        window::Window,
     },
     utils::{env_f64, new_nsrect},
 };
 
 pub struct UI {
-    _window_controller: WindowController,
+    _window: Window,
     pub status_item: StatusItem,
     _momentum_checkbox: Checkbox,
     _high_speed_checkbox: Checkbox,
@@ -203,8 +203,6 @@ impl UI {
         window.set_title("Settings");
         window.center();
 
-        let window_controller = WindowController::new(mtm, window);
-
         let mut momentum_checkbox = Checkbox::init_with_title(mtm, "Enable momentum");
         momentum_checkbox.set_action(mtm, |sender| {
             Self::set_momentum_enabled(sender.state() == NSControlStateValueOn);
@@ -217,8 +215,7 @@ impl UI {
         logon_item_checkbox.set_action(mtm, |sender| {
             Self::set_logon_item_enabled(sender.state() == NSControlStateValueOn);
         });
-        let content_view = window_controller
-            .window
+        let content_view = window
             .window
             .contentView()
             .expect("window should have a content view");
@@ -269,11 +266,11 @@ impl UI {
             Some(sel!(makeKeyAndOrderFront:)),
             &NSString::from_str(","),
         );
-        settings_item.set_target(Some(&window_controller.window.window));
+        settings_item.set_target(Some(&window.window));
 
         status_item.set_menu(menu);
         Self {
-            _window_controller: window_controller,
+            _window: window,
             status_item,
             _momentum_checkbox: momentum_checkbox,
             _high_speed_checkbox: high_speed_checkbox,
