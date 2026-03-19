@@ -12,15 +12,33 @@ const ERR_POISON: &str = "config lock poisoned";
 const APP_SUPPORT_PATH: &str = "Library/Application Support/Lapsus";
 const SETTINGS_FILE_NAME: &str = "settings.toml";
 
-fn default_maximum_momentum_speed() -> f64 { env_f64!("MAXIMUM_MOMENTUM_SPEED") }
-fn default_trackpad_velocity_gain() -> f64 { env_f64!("TRACKPAD_VELOCITY_GAIN") }
-fn default_glide_decay_per_second() -> f64 { env_f64!("GLIDE_DECAY_PER_SECOND") }
-fn default_minimum_glide_velocity() -> f64 { env_f64!("MINIMUM_GLIDE_VELOCITY") }
-fn default_glide_stop_speed_factor() -> f64 { env_f64!("GLIDE_STOP_SPEED_FACTOR") }
-fn default_velocity_smoothing() -> f64 { env_f64!("VELOCITY_SMOOTHING") }
-fn default_min_dt() -> f64 { env_f64!("MIN_DT") }
-fn default_multi_finger_suppression_deadline() -> f64 { env_f64!("MULTI_FINGER_SUPPRESSION_DEADLINE") }
-fn default_logon_item_enabled() -> bool { true }
+fn default_maximum_momentum_speed() -> f64 {
+    env_f64!("MAXIMUM_MOMENTUM_SPEED")
+}
+fn default_trackpad_velocity_gain() -> f64 {
+    env_f64!("TRACKPAD_VELOCITY_GAIN")
+}
+fn default_glide_decay_per_second() -> f64 {
+    env_f64!("GLIDE_DECAY_PER_SECOND")
+}
+fn default_minimum_glide_velocity() -> f64 {
+    env_f64!("MINIMUM_GLIDE_VELOCITY")
+}
+fn default_glide_stop_speed_factor() -> f64 {
+    env_f64!("GLIDE_STOP_SPEED_FACTOR")
+}
+fn default_velocity_smoothing() -> f64 {
+    env_f64!("VELOCITY_SMOOTHING")
+}
+fn default_min_dt() -> f64 {
+    env_f64!("MIN_DT")
+}
+fn default_multi_finger_suppression_deadline() -> f64 {
+    env_f64!("MULTI_FINGER_SUPPRESSION_DEADLINE")
+}
+fn default_logon_item_enabled() -> bool {
+    true
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {

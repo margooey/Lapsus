@@ -19,7 +19,7 @@ impl StatusBarButton {
     }
 
     pub fn set_image(&self, image: &str) {
-        let image = NSImage::initWithContentsOfFile(NSImage::alloc(), &NSString::from_str(image ));
+        let image = NSImage::initWithContentsOfFile(NSImage::alloc(), &NSString::from_str(image));
         if let Some(ref img) = image {
             img.setSize(objc2_core_foundation::CGSize::new(18.0, 18.0));
         }
