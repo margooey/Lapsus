@@ -50,9 +50,9 @@ impl Window {
                 defer: flag,
             ]
         };
-        Self {
-            window: window.into_super(),
-        }
+        let ns_window: Retained<NSWindow> = window.into_super();
+        unsafe { ns_window.setReleasedWhenClosed(false) };
+        Self { window: ns_window }
     }
 
     pub fn set_title(&self, string: &str) {

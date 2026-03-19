@@ -1,119 +1,76 @@
-/*
-    Some LLM assistance used here for the persisted settings stuff.
-*/
-
 use std::{
     env, fs,
     path::PathBuf,
     sync::{Mutex, MutexGuard, OnceLock},
 };
 
+use serde::{Deserialize, Serialize};
+
 use crate::utils::env_f64;
 
 const ERR_POISON: &str = "config lock poisoned";
 const APP_SUPPORT_PATH: &str = "Library/Application Support/Lapsus";
-const SETTINGS_FILE_NAME: &str = "settings.conf";
+const SETTINGS_FILE_NAME: &str = "settings.toml";
 
+fn default_maximum_momentum_speed() -> f64 { env_f64!("MAXIMUM_MOMENTUM_SPEED") }
+fn default_trackpad_velocity_gain() -> f64 { env_f64!("TRACKPAD_VELOCITY_GAIN") }
+fn default_glide_decay_per_second() -> f64 { env_f64!("GLIDE_DECAY_PER_SECOND") }
+fn default_minimum_glide_velocity() -> f64 { env_f64!("MINIMUM_GLIDE_VELOCITY") }
+fn default_glide_stop_speed_factor() -> f64 { env_f64!("GLIDE_STOP_SPEED_FACTOR") }
+fn default_velocity_smoothing() -> f64 { env_f64!("VELOCITY_SMOOTHING") }
+fn default_min_dt() -> f64 { env_f64!("MIN_DT") }
+fn default_multi_finger_suppression_deadline() -> f64 { env_f64!("MULTI_FINGER_SUPPRESSION_DEADLINE") }
+fn default_logon_item_enabled() -> bool { true }
+
+#[derive(Serialize, Deserialize)]
 pub struct Config {
+    #[serde(default = "default_maximum_momentum_speed")]
     pub maximum_momentum_speed: f64,
+    #[serde(default = "default_trackpad_velocity_gain")]
     pub trackpad_velocity_gain: f64,
+    #[serde(default = "default_glide_decay_per_second")]
     pub glide_decay_per_second: f64,
+    #[serde(default = "default_minimum_glide_velocity")]
     pub minimum_glide_velocity: f64,
+    #[serde(default = "default_glide_stop_speed_factor")]
     pub glide_stop_speed_factor: f64,
+    #[serde(default = "default_velocity_smoothing")]
     pub velocity_smoothing: f64,
+    #[serde(default = "default_min_dt")]
     pub min_dt: f64,
+    #[serde(default = "default_multi_finger_suppression_deadline")]
     pub multi_finger_suppression_deadline: f64,
+    #[serde(default = "default_logon_item_enabled")]
     pub logon_item_enabled: bool,
 }
 
 impl Config {
     pub fn init() -> Self {
-        let mut config = Self {
-            maximum_momentum_speed: env_f64!("MAXIMUM_MOMENTUM_SPEED"),
-            trackpad_velocity_gain: env_f64!("TRACKPAD_VELOCITY_GAIN"),
-            glide_decay_per_second: env_f64!("GLIDE_DECAY_PER_SECOND"),
-            minimum_glide_velocity: env_f64!("MINIMUM_GLIDE_VELOCITY"),
-            glide_stop_speed_factor: env_f64!("GLIDE_STOP_SPEED_FACTOR"),
-            velocity_smoothing: env_f64!("VELOCITY_SMOOTHING"),
-            min_dt: env_f64!("MIN_DT"),
-            multi_finger_suppression_deadline: env_f64!("MULTI_FINGER_SUPPRESSION_DEADLINE"),
-            logon_item_enabled: true,
-        };
-        config.load_persisted_settings();
-        config
-    }
-
-    fn load_persisted_settings(&mut self) {
         let Some(settings_path) = settings_file_path() else {
-            return;
+            return Self::defaults();
         };
         let Ok(contents) = fs::read_to_string(&settings_path) else {
-            return;
+            return Self::defaults();
         };
 
-        for line in contents.lines() {
-            let line = line.trim();
-            if line.is_empty() || line.starts_with('#') {
-                continue;
-            }
+        toml::from_str(&contents).unwrap_or_else(|err| {
+            log::warn!("failed to parse settings: {err}");
+            Self::defaults()
+        })
+    }
 
-            let Some((key, value)) = line.split_once('=') else {
-                continue;
-            };
-            let key = key.trim();
-            let value = value.trim();
-
-            match key {
-                "maximum_momentum_speed" => parse_f64(value, &mut self.maximum_momentum_speed),
-                "trackpad_velocity_gain" => parse_f64(value, &mut self.trackpad_velocity_gain),
-                "glide_decay_per_second" => parse_f64(value, &mut self.glide_decay_per_second),
-                "minimum_glide_velocity" => parse_f64(value, &mut self.minimum_glide_velocity),
-                "glide_stop_speed_factor" => parse_f64(value, &mut self.glide_stop_speed_factor),
-                "velocity_smoothing" => parse_f64(value, &mut self.velocity_smoothing),
-                "min_dt" => parse_f64(value, &mut self.min_dt),
-                "multi_finger_suppression_deadline" => {
-                    parse_f64(value, &mut self.multi_finger_suppression_deadline)
-                }
-                "logon_item_enabled" => parse_bool(value, &mut self.logon_item_enabled),
-                _ => {}
-            }
+    fn defaults() -> Self {
+        Self {
+            maximum_momentum_speed: default_maximum_momentum_speed(),
+            trackpad_velocity_gain: default_trackpad_velocity_gain(),
+            glide_decay_per_second: default_glide_decay_per_second(),
+            minimum_glide_velocity: default_minimum_glide_velocity(),
+            glide_stop_speed_factor: default_glide_stop_speed_factor(),
+            velocity_smoothing: default_velocity_smoothing(),
+            min_dt: default_min_dt(),
+            multi_finger_suppression_deadline: default_multi_finger_suppression_deadline(),
+            logon_item_enabled: default_logon_item_enabled(),
         }
-    }
-
-    fn as_persisted_text(&self) -> String {
-        format!(
-            "\
-maximum_momentum_speed={}\n\
-trackpad_velocity_gain={}\n\
-glide_decay_per_second={}\n\
-minimum_glide_velocity={}\n\
-glide_stop_speed_factor={}\n\
-velocity_smoothing={}\n\
-min_dt={}\n\
-multi_finger_suppression_deadline={}\n\
-logon_item_enabled={}\n",
-            self.maximum_momentum_speed,
-            self.trackpad_velocity_gain,
-            self.glide_decay_per_second,
-            self.minimum_glide_velocity,
-            self.glide_stop_speed_factor,
-            self.velocity_smoothing,
-            self.min_dt,
-            self.multi_finger_suppression_deadline,
-            self.logon_item_enabled,
-        )
-    }
-}
-
-fn parse_f64(value: &str, target: &mut f64) {
-    if let Ok(parsed) = value.parse::<f64>() {
-        *target = parsed;
-    }
-}
-
-fn parse_bool(value: &str, target: &mut bool) {
-    if let Ok(parsed) = value.parse::<bool>() {
-        *target = parsed;
     }
 }
 
@@ -166,7 +123,13 @@ pub fn persist_config() {
 
     let settings_text = {
         let config = config();
-        config.as_persisted_text()
+        match toml::to_string(&*config) {
+            Ok(text) => text,
+            Err(err) => {
+                log::warn!("failed to serialize settings: {err}");
+                return;
+            }
+        }
     };
 
     if let Err(error) = fs::write(&settings_path, settings_text) {
