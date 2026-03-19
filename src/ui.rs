@@ -55,6 +55,10 @@ pub struct UI {
     _logon_item_checkbox: Checkbox,
 }
 
+fn control_state(enabled: bool) -> objc2_foundation::NSInteger {
+    if enabled { NSControlStateValueOn } else { NSControlStateValueOff }
+}
+
 impl UI {
     fn set_momentum_enabled(is_enabled: bool) {
         config().min_dt = if is_enabled { env_f64!("MIN_DT") } else { 1.0 };
@@ -226,24 +230,12 @@ impl UI {
         general_label.set_alignment(NSTextAlignment::Right);
 
         momentum_checkbox.size_to_fit();
-        momentum_checkbox.set_state(if Self::momentum_is_enabled() {
-            NSControlStateValueOn
-        } else {
-            NSControlStateValueOff
-        });
+        momentum_checkbox.set_state(control_state(Self::momentum_is_enabled()));
         high_speed_checkbox.size_to_fit();
-        high_speed_checkbox.set_state(if Self::high_speed_is_enabled() {
-            NSControlStateValueOn
-        } else {
-            NSControlStateValueOff
-        });
+        high_speed_checkbox.set_state(control_state(Self::high_speed_is_enabled()));
         Self::apply_saved_logon_item_setting();
         logon_item_checkbox.size_to_fit();
-        logon_item_checkbox.set_state(if Self::logon_item_is_enabled() {
-            NSControlStateValueOn
-        } else {
-            NSControlStateValueOff
-        });
+        logon_item_checkbox.set_state(control_state(Self::logon_item_is_enabled()));
 
         content_view.addSubview(&general_label.text_field);
         content_view.addSubview(&momentum_checkbox.button);
