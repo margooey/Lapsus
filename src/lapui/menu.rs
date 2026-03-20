@@ -2,7 +2,7 @@ use objc2::{MainThreadMarker, rc::Retained, runtime::Sel};
 use objc2_app_kit::NSMenu;
 use objc2_foundation::NSString;
 
-use crate::ui::menu_item::MenuItem;
+use crate::menu_item::MenuItem;
 
 pub struct Menu {
     pub menu: Retained<NSMenu>,

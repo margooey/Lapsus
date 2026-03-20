@@ -2,7 +2,7 @@ use objc2::{AnyThread, MainThreadMarker, rc::Retained};
 use objc2_app_kit::{NSImage, NSStatusBarButton};
 use objc2_foundation::{NSData, NSString};
 
-use crate::ui::status_item::StatusItem;
+use crate::status_item::StatusItem;
 
 pub struct StatusBarButton {
     pub status_bar_button: Retained<NSStatusBarButton>,

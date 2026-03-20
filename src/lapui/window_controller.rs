@@ -1,7 +1,7 @@
 use objc2::{MainThreadMarker, MainThreadOnly, rc::Retained};
 use objc2_app_kit::NSWindowController;
 
-use crate::ui::{view::View, window::Window};
+use crate::{view::View, window::Window};
 
 pub struct WindowController {
     pub window_controller: Retained<NSWindowController>,

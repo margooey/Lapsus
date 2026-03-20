@@ -7,20 +7,15 @@
    Eventually, I plan to break out all of the work I've done on these objc2 wrappers into a separate
    crate as something like "Lapui" (pronounced LAPOOEY, short for Lapsus UI). Maybe someone else could
    use it.
+
+   Oh look! Lapui is here below :)
 */
-pub mod app;
-pub mod button;
-pub mod checkbox;
-pub mod grid_view;
-pub mod menu;
-pub mod menu_item;
-pub mod status_bar_button;
-pub mod status_item;
-pub mod switch;
-pub mod text_field;
-pub mod view;
-pub mod window;
-pub mod window_controller;
+
+use lapui::{
+    app::App, checkbox::Checkbox, menu::Menu, menu_item::MenuItem,
+    status_bar_button::StatusBarButton, status_item::StatusItem, text_field::TextField,
+    window::Window,
+};
 
 use objc2::{rc::Retained, sel};
 use objc2_app_kit::{
@@ -40,11 +35,6 @@ const STATUS_ICON: &[u8] = include_bytes!("../assets/cursoroutline_center.png");
 
 use crate::{
     config::config,
-    ui::{
-        app::App, checkbox::Checkbox, menu::Menu, menu_item::MenuItem,
-        status_bar_button::StatusBarButton, status_item::StatusItem, text_field::TextField,
-        window::Window,
-    },
     utils::{env_f64, new_nsrect},
 };
 

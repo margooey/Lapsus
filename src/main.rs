@@ -3,7 +3,7 @@ pub mod controller;
 pub mod engine;
 pub mod tests;
 pub mod trackpad;
-pub mod ui;
+pub mod setup_ui;
 pub mod utils;
 
 use std::cell::RefCell;
@@ -17,7 +17,7 @@ use objc2::{
 use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationDelegate};
 use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSTimer};
 
-use crate::{config::init_config, controller::Controller, ui::UI, utils::env_f64};
+use crate::{config::init_config, controller::Controller, setup_ui::UI, utils::env_f64};
 
 // https://docs.rs/objc2/latest/objc2/topics/run_loop/index.html#graphical-applications
 struct AppState {

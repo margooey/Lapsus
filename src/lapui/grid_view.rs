@@ -3,7 +3,7 @@ use objc2_app_kit::{NSGridCellPlacement, NSGridRow, NSGridView, NSView};
 use objc2_core_foundation::CGFloat;
 use objc2_foundation::{NSArray, NSRect};
 
-use crate::ui::view::View;
+use crate::view::View;
 
 pub struct GridView {
     pub grid_view: Retained<NSGridView>,

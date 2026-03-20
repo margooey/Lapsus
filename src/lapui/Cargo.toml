@@ -1,0 +1,13 @@
+[package]
+name = "lapui"
+version = "1.0.0"
+edition = "2024"
+
+[lib]
+path = "mod.rs"
+
+[dependencies]
+objc2-app-kit = { version = "0.3.2", default-features = true }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["NSArray", "NSDate", "NSEnumerator", "NSNotification", "NSString", "NSTimer", "NSRunLoop"] }
+objc2-core-foundation = { version = "0.3.2" }
+objc2 = { version = "0.6.3", default-features = false, features = ["std"] }

@@ -7,7 +7,7 @@ use objc2_foundation::{
     MainThreadMarker as FMTMarker, NSObject, NSObjectProtocol, NSRect, NSString,
 };
 
-use crate::ui::view::View;
+use crate::view::View;
 
 define_class!(
     #[unsafe(super(NSWindow))]

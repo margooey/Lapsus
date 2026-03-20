@@ -1,7 +1,7 @@
 use objc2::rc::Retained;
 use objc2_app_kit::{NSStatusBar, NSStatusItem, NSVariableStatusItemLength};
 
-use crate::ui::menu::Menu;
+use crate::menu::Menu;
 
 pub struct StatusItem {
     pub status_item: Retained<NSStatusItem>,
