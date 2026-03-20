@@ -36,6 +36,7 @@ const SIDE_MARGIN: f64 = 20.0;
 const LABEL_CONTROL_GAP: f64 = 6.0;
 const ROW_GAP: f64 = 8.0;
 const LABEL_COLUMN_WIDTH: f64 = 92.0;
+const STATUS_ICON: &[u8] = include_bytes!("../assets/cursoroutline_center.png");
 
 use crate::{
     config::config,
@@ -258,7 +259,7 @@ impl UI {
 
         let status_item = StatusItem::new();
         let status_bar_button = StatusBarButton::new(mtm, &status_item);
-        status_bar_button.set_image("./assets/cursoroutline_center.svg");
+        status_bar_button.set_image(STATUS_ICON);
 
         let menu = Menu::new(mtm);
 

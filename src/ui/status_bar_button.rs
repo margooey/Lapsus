@@ -1,6 +1,6 @@
 use objc2::{AnyThread, MainThreadMarker, rc::Retained};
 use objc2_app_kit::{NSImage, NSStatusBarButton};
-use objc2_foundation::NSString;
+use objc2_foundation::{NSData, NSString};
 
 use crate::ui::status_item::StatusItem;
 
@@ -18,8 +18,9 @@ impl StatusBarButton {
         self.status_bar_button.setTitle(&NSString::from_str(title));
     }
 
-    pub fn set_image(&self, image: &str) {
-        let image = NSImage::initWithContentsOfFile(NSImage::alloc(), &NSString::from_str(image));
+    pub fn set_image(&self, bytes: &[u8]) {
+        let data = NSData::with_bytes(bytes);
+        let image = NSImage::initWithData(NSImage::alloc(), &data);
         if let Some(ref img) = image {
             img.setSize(objc2_core_foundation::CGSize::new(18.0, 18.0));
         }

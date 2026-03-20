@@ -2,7 +2,7 @@
 
 [package]
 name = "Lapsus"
-version = "2.1.1"
+version = "2.1.2"
 edition = "2024"
 
 [dependencies]
