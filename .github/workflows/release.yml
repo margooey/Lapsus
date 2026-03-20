@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  push:
+    tags: [ "v*" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Run tests
+      run: cargo test --verbose
+
+    - name: Install cargo-bundle
+      run: cargo install cargo-bundle
+
+    - name: Bundle .app
+      run: cargo bundle --release
+
+    - name: Zip .app bundle
+      run: |
+        cd target/release/bundle/osx
+        zip -r Lapsus.zip Lapsus.app
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: target/release/bundle/osx/Lapsus.zip
+        generate_release_notes: true
