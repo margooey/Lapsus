@@ -1,9 +1,9 @@
 pub mod config;
 pub mod controller;
 pub mod engine;
+pub mod setup_ui;
 pub mod tests;
 pub mod trackpad;
-pub mod setup_ui;
 pub mod utils;
 
 use std::cell::RefCell;
