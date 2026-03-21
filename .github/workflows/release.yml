@@ -38,3 +38,16 @@ jobs:
       with:
         files: target/release/bundle/osx/Lapsus.zip
         generate_release_notes: true
+        append_body: true
+        body: |
+          ---
+
+          > **Please note:** You will likely need to run the following command in your terminal as the app is signed ad-hoc:
+          > (Assuming you have placed Lapsus in your Applications folder)
+          > ```
+          > xattr -r -d com.apple.quarantine ~/Applications/Lapsus.app
+          > ```
+
+          Thanks for your support!
+
+          Margo
