@@ -106,16 +106,15 @@ impl UI {
 
     fn set_logon_item_enabled(is_enabled: bool) {
         Self::update_logon_item_registration(is_enabled);
-        config().logon_item_enabled = is_enabled;
-        crate::config::persist_config();
-    }
-
-    fn apply_saved_logon_item_setting() {
-        Self::update_logon_item_registration(Self::logon_item_is_enabled());
     }
 
     fn logon_item_is_enabled() -> bool {
-        config().logon_item_enabled
+        let app_service = unsafe { SMAppService::mainAppService() };
+        let status = unsafe { app_service.status() };
+        matches!(
+            status,
+            SMAppServiceStatus::Enabled | SMAppServiceStatus::RequiresApproval
+        )
     }
 
     fn apply_general_row_constraints(
@@ -230,7 +229,6 @@ impl UI {
         momentum_checkbox.set_state(control_state(Self::momentum_is_enabled()));
         high_speed_checkbox.size_to_fit();
         high_speed_checkbox.set_state(control_state(Self::high_speed_is_enabled()));
-        Self::apply_saved_logon_item_setting();
         logon_item_checkbox.size_to_fit();
         logon_item_checkbox.set_state(control_state(Self::logon_item_is_enabled()));
 

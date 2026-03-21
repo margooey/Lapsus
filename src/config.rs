@@ -36,10 +36,6 @@ fn default_min_dt() -> f64 {
 fn default_multi_finger_suppression_deadline() -> f64 {
     env_f64!("MULTI_FINGER_SUPPRESSION_DEADLINE")
 }
-fn default_logon_item_enabled() -> bool {
-    true
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     #[serde(default = "default_maximum_momentum_speed")]
@@ -58,8 +54,6 @@ pub struct Config {
     pub min_dt: f64,
     #[serde(default = "default_multi_finger_suppression_deadline")]
     pub multi_finger_suppression_deadline: f64,
-    #[serde(default = "default_logon_item_enabled")]
-    pub logon_item_enabled: bool,
 }
 
 impl Config {
@@ -87,7 +81,6 @@ impl Config {
             velocity_smoothing: default_velocity_smoothing(),
             min_dt: default_min_dt(),
             multi_finger_suppression_deadline: default_multi_finger_suppression_deadline(),
-            logon_item_enabled: default_logon_item_enabled(),
         }
     }
 }
