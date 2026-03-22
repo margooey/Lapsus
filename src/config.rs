@@ -24,9 +24,6 @@ fn default_glide_decay_per_second() -> f64 {
 fn default_minimum_glide_velocity() -> f64 {
     env_f64!("MINIMUM_GLIDE_VELOCITY")
 }
-fn default_glide_stop_speed_factor() -> f64 {
-    env_f64!("GLIDE_STOP_SPEED_FACTOR")
-}
 fn default_velocity_smoothing() -> f64 {
     env_f64!("VELOCITY_SMOOTHING")
 }
@@ -46,8 +43,6 @@ pub struct Config {
     pub glide_decay_per_second: f64,
     #[serde(default = "default_minimum_glide_velocity")]
     pub minimum_glide_velocity: f64,
-    #[serde(default = "default_glide_stop_speed_factor")]
-    pub glide_stop_speed_factor: f64,
     #[serde(default = "default_velocity_smoothing")]
     pub velocity_smoothing: f64,
     #[serde(default = "default_min_dt")]
@@ -77,7 +72,6 @@ impl Config {
             trackpad_velocity_gain: default_trackpad_velocity_gain(),
             glide_decay_per_second: default_glide_decay_per_second(),
             minimum_glide_velocity: default_minimum_glide_velocity(),
-            glide_stop_speed_factor: default_glide_stop_speed_factor(),
             velocity_smoothing: default_velocity_smoothing(),
             min_dt: default_min_dt(),
             multi_finger_suppression_deadline: default_multi_finger_suppression_deadline(),

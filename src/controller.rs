@@ -94,12 +94,12 @@ impl Controller {
                 self.has_clicked = false;
                 self.engine.begin_touch(physical_position);
             }
-            /* 
+            /*
                 If a click has occurred while touching the trackpad, suppress the glide.
                 This behavior basically assumes that if you do click while touching, you're
                 likely either double-clicking or dragging and don't want the cursor to fly around.
             */
-            
+
             if objc2_app_kit::NSEvent::pressedMouseButtons() != 0 {
                 self.has_clicked = true;
             }
@@ -112,8 +112,7 @@ impl Controller {
             if self.touch_ended_recently {
                 log::debug!("touch end detected (has_clicked: {})", self.has_clicked);
             }
-            let suppress_glide =
-                self.monitor.should_suppress_glide() || self.has_clicked;
+            let suppress_glide = self.monitor.should_suppress_glide() || self.has_clicked;
             self.engine.handle_no_touch(
                 physical_position,
                 delta_time,

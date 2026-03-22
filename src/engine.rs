@@ -149,7 +149,7 @@ impl Engine {
 
         let speed = Self::magnitude(&self.state.velocity);
         let config = config();
-        if speed < config.minimum_glide_velocity * config.glide_stop_speed_factor {
+        if speed < config.minimum_glide_velocity {
             self.set_gliding(false);
             self.state.velocity = ZERO_VECTOR;
             self.update_cursor_position_on_screen();
