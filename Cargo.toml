@@ -5,7 +5,7 @@ members = [
 
 [package]
 name = "Lapsus"
-version = "2.1.5"
+version = "2.1.6"
 edition = "2024"
 
 [dependencies]

@@ -10,6 +10,7 @@ pub struct Controller {
     last_update_timestamp: f64,
     touch_ended_recently: bool,
     pub is_touching: bool,
+    has_clicked: bool,
 }
 
 impl Controller {
@@ -21,6 +22,7 @@ impl Controller {
             last_update_timestamp: 0.0,
             touch_ended_recently: false,
             is_touching: false,
+            has_clicked: false,
         }
     }
 
@@ -89,7 +91,17 @@ impl Controller {
         if is_touching {
             if !self.touch_ended_recently {
                 log::debug!("touch begin detected");
+                self.has_clicked = false;
                 self.engine.begin_touch(physical_position);
+            }
+            /* 
+                If a click has occurred while touching the trackpad, suppress the glide.
+                This behavior basically assumes that if you do click while touching, you're
+                likely either double-clicking or dragging and don't want the cursor to fly around.
+            */
+            
+            if objc2_app_kit::NSEvent::pressedMouseButtons() != 0 {
+                self.has_clicked = true;
             }
             self.engine.handle_touch(
                 physical_position,
@@ -98,14 +110,19 @@ impl Controller {
             );
         } else {
             if self.touch_ended_recently {
-                log::debug!("touch end detected");
+                log::debug!("touch end detected (has_clicked: {})", self.has_clicked);
             }
+            let suppress_glide =
+                self.monitor.should_suppress_glide() || self.has_clicked;
             self.engine.handle_no_touch(
                 physical_position,
                 delta_time,
-                self.monitor.should_suppress_glide(),
+                suppress_glide,
                 self.touch_ended_recently,
             );
+            if self.touch_ended_recently {
+                self.has_clicked = false;
+            }
         }
         self.touch_ended_recently = is_touching;
     }
