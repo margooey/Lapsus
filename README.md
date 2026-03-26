@@ -35,6 +35,12 @@ cargo bundle --release
 
 Debugging is currently work in progress as there are ongoing changes to support Lapsus's transition into a full MacOS bundle. A lot of the debug logic was ripped out of the code, so there is work to be done to add it back in.
 
+<div align="center"><h2>Environment Variables</h2></div>
+
+`MIN_DT`: The time between each tick in seconds. By default, the cursor will update once every **0.002** seconds (**200Hz**).
+
+`MULTI_FINGER_SUPPRESSION_DEADLINE`: When there is more than one finger on the trackpad, wait this amount of time in seconds to suppress potentially erroneous glides. By default, any glide will be suppressed for **0.15** seconds after the last multi-finger touch.
+
 <div align="center"><h2>Credits</h2></div>
 
 - Yury Korolev: [cidre](https://github.com/yury/cidre)
