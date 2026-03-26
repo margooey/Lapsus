@@ -43,7 +43,7 @@ Debugging is currently work in progress as there are ongoing changes to support 
 
 `TRACKPAD_VELOCITY_GAIN`: Used to tweak the normalized trackpad velocity before clamping it. By default, the factor is set to **1.0**, so no changes result from this environment variable.
 
-`MAXIMUM_MAGNITUDE`: When clamping the velocity, the magnitude of the vector is computed and then compared to the maximum magnitude. If the magnitude of the vector is less than the maximum magnitude, the velocity will be "clamped" by a scale of `maximum_magnitude / magnitude`. By default, this value is set to **9000.0**, which was based purely on "feel".
+`MAXIMUM_MAGNITUDE`: When computing the "clamped" velocity, the magnitude of the vector is computed and then compared to the maximum magnitude. If the magnitude of the vector is less than the maximum magnitude, the velocity will be "clamped" by a factor of `maximum_magnitude / magnitude`. By default, this value is set to **9000.0**, which was based purely on "feel".
 
 WIP
 
