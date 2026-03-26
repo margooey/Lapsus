@@ -217,17 +217,17 @@ impl Engine {
             };
             return Some(Self::clamped_velocity(
                 &scaled,
-                config.maximum_momentum_speed,
+                config.default_maximum_magnitude,
             ));
         } else {
             return None;
         }
     }
 
-    fn clamped_velocity(vector: &Vector, max_magnitude: Float) -> Vector {
+    fn clamped_velocity(vector: &Vector, maximum_magnitude: Float) -> Vector {
         let magnitude = Self::magnitude(vector);
-        if magnitude > max_magnitude && magnitude > 0.0 {
-            let scale = max_magnitude / magnitude;
+        if magnitude > maximum_magnitude && magnitude > 0.0 {
+            let scale = maximum_magnitude / magnitude;
             return Vector {
                 dx: vector.dx * scale,
                 dy: vector.dy * scale,

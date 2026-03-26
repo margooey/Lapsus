@@ -41,6 +41,12 @@ Debugging is currently work in progress as there are ongoing changes to support 
 
 `MULTI_FINGER_SUPPRESSION_DEADLINE`: When there is more than one finger on the trackpad, wait this amount of time in seconds to suppress potentially erroneous glides. By default, any glide will be suppressed for **0.15** seconds after the last multi-finger touch.
 
+`TRACKPAD_VELOCITY_GAIN`: Used to tweak the normalized trackpad velocity before clamping it. By default, the factor is set to **1.0**, so no changes result from this environment variable.
+
+`MAXIMUM_MAGNITUDE`: When clamping the velocity, the magnitude of the vector is computed and then compared to the maximum magnitude. If the magnitude of the vector is less than the maximum magnitude, the velocity will be "clamped" by a scale of `maximum_magnitude / magnitude`. By default, this value is set to **9000.0**, which was based purely on "feel".
+
+WIP
+
 <div align="center"><h2>Credits</h2></div>
 
 - Yury Korolev: [cidre](https://github.com/yury/cidre)

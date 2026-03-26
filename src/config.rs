@@ -12,8 +12,8 @@ const ERR_POISON: &str = "config lock poisoned";
 const APP_SUPPORT_PATH: &str = "Library/Application Support/Lapsus";
 const SETTINGS_FILE_NAME: &str = "settings.toml";
 
-fn default_maximum_momentum_speed() -> f64 {
-    env_f64!("MAXIMUM_MOMENTUM_SPEED")
+fn default_maximum_magnitude() -> f64 {
+    env_f64!("MAXIMUM_MAGNITUDE")
 }
 fn default_trackpad_velocity_gain() -> f64 {
     env_f64!("TRACKPAD_VELOCITY_GAIN")
@@ -35,8 +35,8 @@ fn default_multi_finger_suppression_deadline() -> f64 {
 }
 #[derive(Serialize, Deserialize)]
 pub struct Config {
-    #[serde(default = "default_maximum_momentum_speed")]
-    pub maximum_momentum_speed: f64,
+    #[serde(default = "default_maximum_magnitude")]
+    pub default_maximum_magnitude: f64,
     #[serde(default = "default_trackpad_velocity_gain")]
     pub trackpad_velocity_gain: f64,
     #[serde(default = "default_glide_decay_per_second")]
@@ -68,7 +68,7 @@ impl Config {
 
     fn defaults() -> Self {
         Self {
-            maximum_momentum_speed: default_maximum_momentum_speed(),
+            default_maximum_magnitude: default_maximum_magnitude(),
             trackpad_velocity_gain: default_trackpad_velocity_gain(),
             glide_decay_per_second: default_glide_decay_per_second(),
             minimum_glide_velocity: default_minimum_glide_velocity(),
