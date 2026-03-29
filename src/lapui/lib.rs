@@ -1,4 +1,3 @@
-#[allow(clippy::new_without_default)]
 pub mod app;
 pub mod button;
 pub mod checkbox;

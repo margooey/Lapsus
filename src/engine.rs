@@ -19,9 +19,8 @@ pub struct Engine {
     desktop_bounds: Rect,
 }
 
-#[allow(clippy::new_without_default)]
 impl Engine {
-    pub fn new() -> Self {
+    pub fn init() -> Self {
         Engine {
             state: State {
                 position: Point { x: 0.0, y: 0.0 },

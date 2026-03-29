@@ -8,7 +8,7 @@ pub struct StatusItem {
 }
 
 impl StatusItem {
-    pub fn new() -> Self {
+    pub fn init() -> Self {
         let status_bar = NSStatusBar::systemStatusBar();
         let status_item = status_bar.statusItemWithLength(NSVariableStatusItemLength);
         Self { status_item }

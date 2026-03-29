@@ -4,7 +4,7 @@ version = "1.0.0"
 edition = "2024"
 
 [lib]
-path = "mod.rs"
+path = "lib.rs"
 
 [dependencies]
 objc2-app-kit = { version = "0.3.2", default-features = true }

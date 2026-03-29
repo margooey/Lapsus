@@ -31,9 +31,8 @@ pub struct TrackpadMonitor {
     listener_started: bool,
 }
 
-#[allow(clippy::new_without_default)]
 impl TrackpadMonitor {
-    pub fn new() -> Self {
+    pub fn init() -> Self {
         Self {
             devices: Vec::new(),
             state: Arc::new(Mutex::new(TrackpadState {

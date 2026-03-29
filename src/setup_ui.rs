@@ -245,7 +245,7 @@ impl UI {
             &logon_item_checkbox,
         );
 
-        let status_item = StatusItem::new();
+        let status_item = StatusItem::init();
         let status_bar_button = StatusBarButton::new(mtm, &status_item);
         status_bar_button.set_image(STATUS_ICON);
 

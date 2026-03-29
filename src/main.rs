@@ -60,7 +60,7 @@ define_class!(
         fn application_did_finish_launching(&self, _notification: &NSNotification)  {
             let _mtm = MainThreadMarker::new().expect("must be on the main thread");
             let ui = UI::initialize();
-            let mut controller = Controller::new();
+            let mut controller = Controller::init();
             controller.start();
             let tick_interval = env_f64!("MIN_DT");
 

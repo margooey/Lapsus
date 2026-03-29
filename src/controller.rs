@@ -13,12 +13,11 @@ pub struct Controller {
     has_clicked: bool,
 }
 
-#[allow(clippy::new_without_default)]
 impl Controller {
-    pub fn new() -> Self {
+    pub fn init() -> Self {
         Self {
-            engine: engine::Engine::new(),
-            monitor: trackpad::TrackpadMonitor::new(),
+            engine: engine::Engine::init(),
+            monitor: trackpad::TrackpadMonitor::init(),
             is_running: false,
             last_update_timestamp: 0.0,
             touch_ended_recently: false,
