@@ -82,11 +82,7 @@ impl UI {
         let app_service = unsafe { SMAppService::mainAppService() };
         let status = unsafe { app_service.status() };
 
-        let already_set = match (is_enabled, status) {
-            (true, SMAppServiceStatus::Enabled | SMAppServiceStatus::RequiresApproval) => true,
-            (false, SMAppServiceStatus::NotRegistered) => true,
-            _ => false,
-        };
+        let already_set = matches!((is_enabled, status), (true, SMAppServiceStatus::Enabled | SMAppServiceStatus::RequiresApproval) | (false, SMAppServiceStatus::NotRegistered));
         if already_set {
             return;
         }

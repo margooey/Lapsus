@@ -184,8 +184,7 @@ impl Engine {
                     y: local_y,
                 },
             );
-        } else {
-        }
+        } 
     }
 
     pub fn update_engine_state(&mut self, physical_position: Point) {
