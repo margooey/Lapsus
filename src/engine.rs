@@ -70,9 +70,10 @@ impl Engine {
         let mut velocity = pointer_velocity;
         let trackpad_velocity = self.trackpad_velocity_in_pixels(normalized_trackpad_velocity);
         if let Some(trackpad_velocity) = trackpad_velocity
-            && Self::magnitude(&trackpad_velocity) > Self::magnitude(&pointer_velocity) {
-                velocity = trackpad_velocity;
-            }
+            && Self::magnitude(&trackpad_velocity) > Self::magnitude(&pointer_velocity)
+        {
+            velocity = trackpad_velocity;
+        }
         self.state.velocity = velocity;
         self.state.position.x += delta_pos.x;
         self.state.position.y += delta_pos.y;
@@ -184,7 +185,7 @@ impl Engine {
                     y: local_y,
                 },
             );
-        } 
+        }
     }
 
     pub fn update_engine_state(&mut self, physical_position: Point) {
