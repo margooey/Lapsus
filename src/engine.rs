@@ -19,6 +19,7 @@ pub struct Engine {
     desktop_bounds: Rect,
 }
 
+#[allow(clippy::new_without_default)]
 impl Engine {
     pub fn new() -> Self {
         Engine {

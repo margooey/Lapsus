@@ -13,6 +13,7 @@ pub struct Controller {
     has_clicked: bool,
 }
 
+#[allow(clippy::new_without_default)]
 impl Controller {
     pub fn new() -> Self {
         Self {

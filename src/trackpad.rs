@@ -31,6 +31,7 @@ pub struct TrackpadMonitor {
     listener_started: bool,
 }
 
+#[allow(clippy::new_without_default)]
 impl TrackpadMonitor {
     pub fn new() -> Self {
         Self {
