@@ -70,11 +70,10 @@ impl Engine {
 
         let mut velocity = pointer_velocity;
         let trackpad_velocity = self.trackpad_velocity_in_pixels(normalized_trackpad_velocity);
-        if let Some(trackpad_velocity) = trackpad_velocity {
-            if Self::magnitude(&trackpad_velocity) > Self::magnitude(&pointer_velocity) {
+        if let Some(trackpad_velocity) = trackpad_velocity
+            && Self::magnitude(&trackpad_velocity) > Self::magnitude(&pointer_velocity) {
                 velocity = trackpad_velocity;
             }
-        }
         self.state.velocity = velocity;
         self.state.position.x += delta_pos.x;
         self.state.position.y += delta_pos.y;
@@ -122,7 +121,6 @@ impl Engine {
             );
             self.set_gliding(false);
             self.state.velocity = ZERO_VECTOR;
-            return;
         } else {
             log::debug!("glide start: speed {:.3} >= min {:.3}", speed, min_speed);
             self.set_gliding(true);
@@ -188,7 +186,6 @@ impl Engine {
                 },
             );
         } else {
-            return;
         }
     }
 
@@ -216,12 +213,12 @@ impl Engine {
                     * self.desktop_bounds.size.height
                     * config.trackpad_velocity_gain,
             };
-            return Some(Self::clamped_velocity(
+            Some(Self::clamped_velocity(
                 &scaled,
                 config.default_maximum_magnitude,
-            ));
+            ))
         } else {
-            return None;
+            None
         }
     }
 
@@ -229,12 +226,12 @@ impl Engine {
         let magnitude = Self::magnitude(vector);
         if magnitude > maximum_magnitude && magnitude > 0.0 {
             let scale = maximum_magnitude / magnitude;
-            return Vector {
+            Vector {
                 dx: vector.dx * scale,
                 dy: vector.dy * scale,
-            };
+            }
         } else {
-            return *vector;
+            *vector
         }
     }
 }
