@@ -30,8 +30,8 @@ fn default_velocity_smoothing() -> f64 {
 fn default_min_dt() -> f64 {
     env_f64!("MIN_DT")
 }
-fn default_multi_finger_suppression_deadline() -> f64 {
-    env_f64!("MULTI_FINGER_SUPPRESSION_DEADLINE")
+fn default_multi_touch_suppression_deadline() -> f64 {
+    env_f64!("MULTI_TOUCH_SUPPRESSION_DEADLINE")
 }
 #[derive(Serialize, Deserialize)]
 pub struct Config {
@@ -47,8 +47,8 @@ pub struct Config {
     pub velocity_smoothing: f64,
     #[serde(default = "default_min_dt")]
     pub min_dt: f64,
-    #[serde(default = "default_multi_finger_suppression_deadline")]
-    pub multi_finger_suppression_deadline: f64,
+    #[serde(default = "default_multi_touch_suppression_deadline")]
+    pub multi_touch_suppression_deadline: f64,
 }
 
 impl Config {
@@ -74,7 +74,7 @@ impl Config {
             minimum_glide_velocity: default_minimum_glide_velocity(),
             velocity_smoothing: default_velocity_smoothing(),
             min_dt: default_min_dt(),
-            multi_finger_suppression_deadline: default_multi_finger_suppression_deadline(),
+            multi_touch_suppression_deadline: default_multi_touch_suppression_deadline(),
         }
     }
 }

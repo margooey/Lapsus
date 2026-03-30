@@ -3,6 +3,7 @@
 use crate::{config::config, engine::ZERO_VECTOR};
 use cidre::cg::{Float, Point, Vector};
 use macos_multitouch::{self, MultitouchDevice};
+use std::collections::HashSet;
 use std::mem;
 use std::sync::{Arc, Mutex};
 
@@ -23,6 +24,8 @@ struct TrackpadState {
     last_sample_timestamp: f64,
     normalized_velocity: Vector,
     suppress_glide_deadline: f64,
+    previous_real_ids: HashSet<i32>,
+    tainted_palm_ids: HashSet<i32>,
 }
 
 pub struct TrackpadMonitor {
@@ -43,6 +46,8 @@ impl TrackpadMonitor {
                 last_sample_timestamp: 0.0,
                 normalized_velocity: Vector { dx: 0.0, dy: 0.0 },
                 suppress_glide_deadline: 0.0,
+                previous_real_ids: HashSet::new(),
+                tainted_palm_ids: HashSet::new(),
             })),
             listener_started: false,
         }
@@ -68,18 +73,59 @@ impl TrackpadMonitor {
                 move |_device, data: &[macos_multitouch::Finger], timestamp, _frame| {
                     let mut state = state.lock().expect("trackpad state lock poisoned");
 
+                    // Mark any finger as tainted if it was previously a "real finger" and is now registered by macOS as a palm
+                    // Ignore the first frame, since fingers can briefly appear as palm_rejection == 0
+                    for touch in data.iter() {
+                        if touch.palm_rejection == 0
+                            && state.previous_real_ids.contains(&touch.identifier)
+                            && state.tainted_palm_ids.insert(touch.identifier)
+                        {
+                            log::debug!(
+                                "finger {} tainted as palm (was real finger)",
+                                touch.identifier
+                            );
+                        }
+                    }
+                    // Remove identifiers no longer present
+                    let current_ids: HashSet<i32> = data.iter().map(|f| f.identifier).collect();
+                    state.tainted_palm_ids.retain(|id| current_ids.contains(id));
+                    state.previous_real_ids = data
+                        .iter()
+                        .filter(|f| {
+                            f.palm_rejection != 0 && !state.tainted_palm_ids.contains(&f.identifier)
+                        })
+                        .map(|f| f.identifier)
+                        .collect();
+
+                    log::debug!(
+                        "frame: {} contacts, {} real, {} tainted — {:?}",
+                        data.len(),
+                        data.iter()
+                            .filter(|f| f.palm_rejection != 0
+                                && !state.tainted_palm_ids.contains(&f.identifier))
+                            .count(),
+                        state.tainted_palm_ids.len(),
+                        data.iter()
+                            .map(|f| (f.identifier, f.palm_rejection))
+                            .collect::<Vec<_>>()
+                    );
+
                     // Reuse the existing positions buffer
                     let mut positions = mem::take(&mut state.latest_positions);
                     positions.clear();
                     positions.reserve(data.len());
 
                     // Get the position of each finger and update the touch metrics
-                    for finger in data {
+                    // Filter out palms and tainted identifiers
+                    for non_palm_touch in data.iter().filter(|f| {
+                        f.palm_rejection != 0 && !state.tainted_palm_ids.contains(&f.identifier)
+                    }) {
                         positions.push(Point {
-                            x: finger.normalized.pos.x as Float,
-                            y: finger.normalized.pos.y as Float,
+                            x: non_palm_touch.normalized.pos.x as Float,
+                            y: non_palm_touch.normalized.pos.y as Float,
                         });
                     }
+
                     update_touch_metrics(&mut state, &positions, timestamp);
                     state.latest_positions = positions;
                 },
@@ -140,9 +186,10 @@ impl TrackpadMonitor {
 
 fn update_touch_metrics(state: &mut TrackpadState, positions: &[Point], timestamp: f64) {
     let config = config();
+    // if there is more than one real finger, suppress gliding for a short duration since it's likely some gesture
     if positions.len() > 1 {
         let now = objc2_core_foundation::CFAbsoluteTimeGetCurrent();
-        state.suppress_glide_deadline = now + config.multi_finger_suppression_deadline;
+        state.suppress_glide_deadline = now + config.multi_touch_suppression_deadline;
     }
     let was_touching = state.is_touching;
     state.is_touching = !positions.is_empty();

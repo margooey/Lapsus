@@ -39,7 +39,7 @@ Debugging is currently work in progress as there are ongoing changes to support 
 
 `MIN_DT`: The time between each tick in seconds. By default, the cursor will update once every **0.002** seconds (**200Hz**).
 
-`MULTI_FINGER_SUPPRESSION_DEADLINE`: When there is more than one finger on the trackpad, wait this amount of time in seconds to suppress potentially erroneous glides. By default, any glide will be suppressed for **0.15** seconds after the last multi-finger touch.
+`MULTI_TOUCH_SUPPRESSION_DEADLINE`: When there is more than one finger on the trackpad, wait this amount of time in seconds to suppress potentially erroneous glides. By default, any glide will be suppressed for **0.15** seconds after the last multi-finger touch.
 
 `TRACKPAD_VELOCITY_GAIN`: Used to tweak the normalized trackpad velocity before clamping it. By default, the factor is set to **1.0**, so no changes result from this environment variable.
 
