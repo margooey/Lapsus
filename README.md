@@ -14,7 +14,7 @@ You can run Lapsus simply by double-clicking on the app. You can stop the glide 
 
 In the future, Lapsus will come with a .dmg installer to easily drag and drop into your Applications folder. Currently, you will need to run the following command after placing it in your Applications folder to bypass macOS Gatekeeper, as the app is signed ad-hoc:
 ```
-xattr -r -d com.apple.quarantine ~/Applications/Lapsus.app
+xattr -dr com.apple.quarantine /Applications/Lapsus.app
 ```
 
 <div align="center"><h2>Build</h2></div>
