@@ -73,42 +73,46 @@ impl TrackpadMonitor {
                 move |_device, data: &[macos_multitouch::Finger], timestamp, _frame| {
                     let mut state = state.lock().expect("trackpad state lock poisoned");
 
-                    // Mark any finger as tainted if it was previously a "real finger" and is now registered by macOS as a palm
-                    // Ignore the first frame, since fingers can briefly appear as palm_rejection == 0
-                    for touch in data.iter() {
-                        if touch.palm_rejection == 0
-                            && state.previous_real_ids.contains(&touch.identifier)
-                            && state.tainted_palm_ids.insert(touch.identifier)
-                        {
-                            log::debug!(
-                                "finger {} tainted as palm (was real finger)",
-                                touch.identifier
-                            );
-                        }
-                    }
-                    // Remove identifiers no longer present
-                    let current_ids: HashSet<i32> = data.iter().map(|f| f.identifier).collect();
-                    state.tainted_palm_ids.retain(|id| current_ids.contains(id));
-                    state.previous_real_ids = data
-                        .iter()
-                        .filter(|f| {
-                            f.palm_rejection != 0 && !state.tainted_palm_ids.contains(&f.identifier)
-                        })
-                        .map(|f| f.identifier)
-                        .collect();
+                    let palm_rejection_enabled = config().palm_rejection_enabled;
 
-                    log::debug!(
-                        "frame: {} contacts, {} real, {} tainted — {:?}",
-                        data.len(),
-                        data.iter()
-                            .filter(|f| f.palm_rejection != 0
-                                && !state.tainted_palm_ids.contains(&f.identifier))
-                            .count(),
-                        state.tainted_palm_ids.len(),
-                        data.iter()
-                            .map(|f| (f.identifier, f.palm_rejection))
-                            .collect::<Vec<_>>()
-                    );
+                    if palm_rejection_enabled {
+                        // Mark any finger as tainted if it was previously a "real finger" and is now registered by macOS as a palm
+                        // Ignore the first frame, since fingers can briefly appear as palm_rejection == 0
+                        for touch in data.iter() {
+                            if touch.palm_rejection == 0
+                                && state.previous_real_ids.contains(&touch.identifier)
+                                && state.tainted_palm_ids.insert(touch.identifier)
+                            {
+                                log::debug!(
+                                    "finger {} tainted as palm (was real finger)",
+                                    touch.identifier
+                                );
+                            }
+                        }
+                        // Remove identifiers no longer present
+                        let current_ids: HashSet<i32> = data.iter().map(|f| f.identifier).collect();
+                        state.tainted_palm_ids.retain(|id| current_ids.contains(id));
+                        state.previous_real_ids = data
+                            .iter()
+                            .filter(|f| {
+                                f.palm_rejection != 0 && !state.tainted_palm_ids.contains(&f.identifier)
+                            })
+                            .map(|f| f.identifier)
+                            .collect();
+
+                        log::debug!(
+                            "frame: {} contacts, {} real, {} tainted — {:?}",
+                            data.len(),
+                            data.iter()
+                                .filter(|f| f.palm_rejection != 0
+                                    && !state.tainted_palm_ids.contains(&f.identifier))
+                                .count(),
+                            state.tainted_palm_ids.len(),
+                            data.iter()
+                                .map(|f| (f.identifier, f.palm_rejection))
+                                .collect::<Vec<_>>()
+                        );
+                    }
 
                     // Reuse the existing positions buffer
                     let mut positions = mem::take(&mut state.latest_positions);
@@ -116,13 +120,17 @@ impl TrackpadMonitor {
                     positions.reserve(data.len());
 
                     // Get the position of each finger and update the touch metrics
-                    // Filter out palms and tainted identifiers
-                    for non_palm_touch in data.iter().filter(|f| {
-                        f.palm_rejection != 0 && !state.tainted_palm_ids.contains(&f.identifier)
-                    }) {
+                    for finger in data.iter() {
+                        // Filter out palms and tainted identifiers when palm rejection is enabled
+                        if palm_rejection_enabled
+                            && (finger.palm_rejection == 0
+                                || state.tainted_palm_ids.contains(&finger.identifier))
+                        {
+                            continue;
+                        }
                         positions.push(Point {
-                            x: non_palm_touch.normalized.pos.x as Float,
-                            y: non_palm_touch.normalized.pos.y as Float,
+                            x: finger.normalized.pos.x as Float,
+                            y: finger.normalized.pos.y as Float,
                         });
                     }
 

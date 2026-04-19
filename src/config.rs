@@ -33,6 +33,9 @@ fn default_min_dt() -> f64 {
 fn default_multi_touch_suppression_deadline() -> f64 {
     env_f64!("MULTI_TOUCH_SUPPRESSION_DEADLINE")
 }
+fn default_palm_rejection_enabled() -> bool {
+    false
+}
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     #[serde(default = "default_maximum_magnitude")]
@@ -49,6 +52,8 @@ pub struct Config {
     pub min_dt: f64,
     #[serde(default = "default_multi_touch_suppression_deadline")]
     pub multi_touch_suppression_deadline: f64,
+    #[serde(default = "default_palm_rejection_enabled")]
+    pub palm_rejection_enabled: bool,
 }
 
 impl Config {
@@ -75,6 +80,7 @@ impl Config {
             velocity_smoothing: default_velocity_smoothing(),
             min_dt: default_min_dt(),
             multi_touch_suppression_deadline: default_multi_touch_suppression_deadline(),
+            palm_rejection_enabled: default_palm_rejection_enabled(),
         }
     }
 }

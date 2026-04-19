@@ -25,7 +25,7 @@ use objc2_app_kit::{
 use objc2_foundation::{MainThreadMarker, NSArray, NSPoint, NSRect, NSSize, NSString};
 use objc2_service_management::{SMAppService, SMAppServiceStatus};
 
-const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 420.0, 140.0);
+const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 420.0, 168.0);
 const TOP_MARGIN: f64 = 14.0;
 const SIDE_MARGIN: f64 = 20.0;
 const LABEL_CONTROL_GAP: f64 = 6.0;
@@ -44,6 +44,7 @@ pub struct UI {
     _momentum_checkbox: Checkbox,
     _high_speed_checkbox: Checkbox,
     _logon_item_checkbox: Checkbox,
+    _palm_rejection_checkbox: Checkbox,
 }
 
 fn control_state(enabled: bool) -> objc2_foundation::NSInteger {
@@ -106,6 +107,15 @@ impl UI {
         }
     }
 
+    fn set_palm_rejection_enabled(is_enabled: bool) {
+        config().palm_rejection_enabled = is_enabled;
+        crate::config::persist_config();
+    }
+
+    fn palm_rejection_is_enabled() -> bool {
+        config().palm_rejection_enabled
+    }
+
     fn set_logon_item_enabled(is_enabled: bool) {
         Self::update_logon_item_registration(is_enabled);
     }
@@ -125,11 +135,13 @@ impl UI {
         momentum_checkbox: &Checkbox,
         high_speed_checkbox: &Checkbox,
         logon_item_checkbox: &Checkbox,
+        palm_rejection_checkbox: &Checkbox,
     ) {
         general_label.set_translates_autoresizing_mask_into_constraints(false);
         momentum_checkbox.set_translates_autoresizing_mask_into_constraints(false);
         high_speed_checkbox.set_translates_autoresizing_mask_into_constraints(false);
         logon_item_checkbox.set_translates_autoresizing_mask_into_constraints(false);
+        palm_rejection_checkbox.set_translates_autoresizing_mask_into_constraints(false);
 
         let constraints = NSArray::from_retained_slice(&[
             general_label
@@ -186,6 +198,21 @@ impl UI {
                     &content_view.trailingAnchor(),
                     -SIDE_MARGIN,
                 ),
+            palm_rejection_checkbox
+                .leading_anchor()
+                .constraintEqualToAnchor(&momentum_checkbox.leading_anchor()),
+            palm_rejection_checkbox
+                .top_anchor()
+                .constraintEqualToAnchor_constant(
+                    &logon_item_checkbox.button.bottomAnchor(),
+                    ROW_GAP,
+                ),
+            palm_rejection_checkbox
+                .trailing_anchor()
+                .constraintLessThanOrEqualToAnchor_constant(
+                    &content_view.trailingAnchor(),
+                    -SIDE_MARGIN,
+                ),
         ]);
         NSLayoutConstraint::activateConstraints(&constraints);
     }
@@ -218,6 +245,11 @@ impl UI {
         logon_item_checkbox.set_action(mtm, |sender| {
             Self::set_logon_item_enabled(sender.state() == NSControlStateValueOn);
         });
+        let mut palm_rejection_checkbox =
+            Checkbox::init_with_title(mtm, "Enable palm rejection (Experimental)");
+        palm_rejection_checkbox.set_action(mtm, |sender| {
+            Self::set_palm_rejection_enabled(sender.state() == NSControlStateValueOn);
+        });
         let content_view = window
             .window
             .contentView()
@@ -233,11 +265,14 @@ impl UI {
         high_speed_checkbox.set_state(control_state(Self::high_speed_is_enabled()));
         logon_item_checkbox.size_to_fit();
         logon_item_checkbox.set_state(control_state(Self::logon_item_is_enabled()));
+        palm_rejection_checkbox.size_to_fit();
+        palm_rejection_checkbox.set_state(control_state(Self::palm_rejection_is_enabled()));
 
         content_view.addSubview(&general_label.text_field);
         content_view.addSubview(&momentum_checkbox.button);
         content_view.addSubview(&high_speed_checkbox.button);
         content_view.addSubview(&logon_item_checkbox.button);
+        content_view.addSubview(&palm_rejection_checkbox.button);
 
         Self::apply_general_row_constraints(
             &content_view,
@@ -245,6 +280,7 @@ impl UI {
             &momentum_checkbox,
             &high_speed_checkbox,
             &logon_item_checkbox,
+            &palm_rejection_checkbox,
         );
 
         let status_item = StatusItem::init();
@@ -277,6 +313,7 @@ impl UI {
             _momentum_checkbox: momentum_checkbox,
             _high_speed_checkbox: high_speed_checkbox,
             _logon_item_checkbox: logon_item_checkbox,
+            _palm_rejection_checkbox: palm_rejection_checkbox,
         }
     }
 }
