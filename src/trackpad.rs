@@ -95,7 +95,8 @@ impl TrackpadMonitor {
                         state.previous_real_ids = data
                             .iter()
                             .filter(|f| {
-                                f.palm_rejection != 0 && !state.tainted_palm_ids.contains(&f.identifier)
+                                f.palm_rejection != 0
+                                    && !state.tainted_palm_ids.contains(&f.identifier)
                             })
                             .map(|f| f.identifier)
                             .collect();
