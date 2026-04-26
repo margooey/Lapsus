@@ -128,8 +128,36 @@ impl Engine {
         }
     }
 
+    fn do_air_hockey_mode_stuff(&mut self) {
+        if self.desktop_bounds == Rect::null() {
+            return;
+        }
+        let bounds = self.desktop_bounds;
+        let min_x = bounds.origin.x;
+        let max_x = bounds.origin.x + bounds.size.width;
+        let min_y = bounds.origin.y;
+        let max_y = bounds.origin.y + bounds.size.height;
+
+        if self.state.position.x < min_x {
+            self.state.position.x = min_x;
+            self.state.velocity.dx = self.state.velocity.dx.abs();
+        } else if self.state.position.x > max_x {
+            self.state.position.x = max_x;
+            self.state.velocity.dx = -self.state.velocity.dx.abs();
+        }
+
+        if self.state.position.y < min_y {
+            self.state.position.y = min_y;
+            self.state.velocity.dy = self.state.velocity.dy.abs();
+        } else if self.state.position.y > max_y {
+            self.state.position.y = max_y;
+            self.state.velocity.dy = -self.state.velocity.dy.abs();
+        }
+    }
+
     pub fn apply_momentum(&mut self, delta_time: Float) {
-        let glide_decay_per_second = config().glide_decay_per_second;
+        let config = config();
+        let glide_decay_per_second = config.glide_decay_per_second;
         let decay_factor = max(0.0, 1.0 - glide_decay_per_second * delta_time);
         self.state.velocity.dx *= decay_factor;
         self.state.velocity.dy *= decay_factor;
@@ -144,10 +172,13 @@ impl Engine {
         self.state.position.y += momentum_delta.dy;
         self.state.last_input_delta = momentum_delta;
 
+        if config.air_hockey_mode_enabled && self.desktop_bounds != Rect::null() {
+            self.do_air_hockey_mode_stuff();
+        }
+
         self.update_cursor_position_on_screen();
 
         let speed = Self::magnitude(&self.state.velocity);
-        let config = config();
         if speed < config.minimum_glide_velocity {
             self.set_gliding(false);
             self.state.velocity = ZERO_VECTOR;

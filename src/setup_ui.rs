@@ -25,7 +25,7 @@ use objc2_app_kit::{
 use objc2_foundation::{MainThreadMarker, NSArray, NSPoint, NSRect, NSSize, NSString};
 use objc2_service_management::{SMAppService, SMAppServiceStatus};
 
-const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 420.0, 168.0);
+const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 420.0, 228.0);
 const TOP_MARGIN: f64 = 14.0;
 const SIDE_MARGIN: f64 = 20.0;
 const LABEL_CONTROL_GAP: f64 = 6.0;
@@ -45,6 +45,7 @@ pub struct UI {
     _high_speed_checkbox: Checkbox,
     _logon_item_checkbox: Checkbox,
     _palm_rejection_checkbox: Checkbox,
+    _air_hockey_mode_checkbox: Checkbox,
 }
 
 fn control_state(enabled: bool) -> objc2_foundation::NSInteger {
@@ -116,6 +117,15 @@ impl UI {
         config().palm_rejection_enabled
     }
 
+    fn set_air_hockey_mode_enabled(is_enabled: bool) {
+        config().air_hockey_mode_enabled = is_enabled;
+        crate::config::persist_config();
+    }
+
+    fn air_hockey_mode_is_enabled() -> bool {
+        config().air_hockey_mode_enabled
+    }
+
     fn set_logon_item_enabled(is_enabled: bool) {
         Self::update_logon_item_registration(is_enabled);
     }
@@ -127,6 +137,45 @@ impl UI {
             status,
             SMAppServiceStatus::Enabled | SMAppServiceStatus::RequiresApproval
         )
+    }
+
+    fn apply_fun_row_constraints(
+        content_view: &Retained<NSView>,
+        fun_label: &TextField,
+        air_hockey_mode_checkbox: &Checkbox,
+        anchor_above: &objc2_app_kit::NSButton,
+    ) {
+        fun_label.set_translates_autoresizing_mask_into_constraints(false);
+        air_hockey_mode_checkbox.set_translates_autoresizing_mask_into_constraints(false);
+
+        let section_gap = ROW_GAP * 3.0;
+        let constraints = NSArray::from_retained_slice(&[
+            fun_label
+                .leading_anchor()
+                .constraintEqualToAnchor_constant(&content_view.leadingAnchor(), SIDE_MARGIN),
+            fun_label
+                .width_anchor()
+                .constraintEqualToConstant(LABEL_COLUMN_WIDTH),
+            air_hockey_mode_checkbox
+                .leading_anchor()
+                .constraintEqualToAnchor_constant(
+                    &fun_label.text_field.trailingAnchor(),
+                    LABEL_CONTROL_GAP,
+                ),
+            air_hockey_mode_checkbox
+                .top_anchor()
+                .constraintEqualToAnchor_constant(&anchor_above.bottomAnchor(), section_gap),
+            air_hockey_mode_checkbox
+                .trailing_anchor()
+                .constraintLessThanOrEqualToAnchor_constant(
+                    &content_view.trailingAnchor(),
+                    -SIDE_MARGIN,
+                ),
+            fun_label
+                .first_baseline_anchor()
+                .constraintEqualToAnchor(&air_hockey_mode_checkbox.button.firstBaselineAnchor()),
+        ]);
+        NSLayoutConstraint::activateConstraints(&constraints);
     }
 
     fn apply_general_row_constraints(
@@ -250,14 +299,22 @@ impl UI {
         palm_rejection_checkbox.set_action(mtm, |sender| {
             Self::set_palm_rejection_enabled(sender.state() == NSControlStateValueOn);
         });
+        let mut air_hockey_mode_checkbox = Checkbox::init_with_title(mtm, "Air hockey mode");
+        air_hockey_mode_checkbox.set_action(mtm, |sender| {
+            Self::set_air_hockey_mode_enabled(sender.state() == NSControlStateValueOn);
+        });
         let content_view = window
             .window
             .contentView()
             .expect("window should have a content view");
 
         let general_label = TextField::label(mtm, "General:");
-        general_label.set_font(label_font);
+        general_label.set_font(label_font.clone());
         general_label.set_alignment(NSTextAlignment::Right);
+
+        let fun_label = TextField::label(mtm, "Fun:");
+        fun_label.set_font(label_font);
+        fun_label.set_alignment(NSTextAlignment::Right);
 
         momentum_checkbox.size_to_fit();
         momentum_checkbox.set_state(control_state(Self::momentum_is_enabled()));
@@ -267,12 +324,16 @@ impl UI {
         logon_item_checkbox.set_state(control_state(Self::logon_item_is_enabled()));
         palm_rejection_checkbox.size_to_fit();
         palm_rejection_checkbox.set_state(control_state(Self::palm_rejection_is_enabled()));
+        air_hockey_mode_checkbox.size_to_fit();
+        air_hockey_mode_checkbox.set_state(control_state(Self::air_hockey_mode_is_enabled()));
 
         content_view.addSubview(&general_label.text_field);
         content_view.addSubview(&momentum_checkbox.button);
         content_view.addSubview(&high_speed_checkbox.button);
         content_view.addSubview(&logon_item_checkbox.button);
         content_view.addSubview(&palm_rejection_checkbox.button);
+        content_view.addSubview(&fun_label.text_field);
+        content_view.addSubview(&air_hockey_mode_checkbox.button);
 
         Self::apply_general_row_constraints(
             &content_view,
@@ -281,6 +342,12 @@ impl UI {
             &high_speed_checkbox,
             &logon_item_checkbox,
             &palm_rejection_checkbox,
+        );
+        Self::apply_fun_row_constraints(
+            &content_view,
+            &fun_label,
+            &air_hockey_mode_checkbox,
+            &palm_rejection_checkbox.button,
         );
 
         let status_item = StatusItem::init();
@@ -314,6 +381,7 @@ impl UI {
             _high_speed_checkbox: high_speed_checkbox,
             _logon_item_checkbox: logon_item_checkbox,
             _palm_rejection_checkbox: palm_rejection_checkbox,
+            _air_hockey_mode_checkbox: air_hockey_mode_checkbox,
         }
     }
 }

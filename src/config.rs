@@ -36,6 +36,9 @@ fn default_multi_touch_suppression_deadline() -> f64 {
 fn default_palm_rejection_enabled() -> bool {
     false
 }
+fn default_air_hockey_mode_enabled() -> bool {
+    false
+}
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     #[serde(default = "default_maximum_magnitude")]
@@ -54,6 +57,8 @@ pub struct Config {
     pub multi_touch_suppression_deadline: f64,
     #[serde(default = "default_palm_rejection_enabled")]
     pub palm_rejection_enabled: bool,
+    #[serde(default = "default_air_hockey_mode_enabled")]
+    pub air_hockey_mode_enabled: bool,
 }
 
 impl Config {
@@ -81,6 +86,7 @@ impl Config {
             min_dt: default_min_dt(),
             multi_touch_suppression_deadline: default_multi_touch_suppression_deadline(),
             palm_rejection_enabled: default_palm_rejection_enabled(),
+            air_hockey_mode_enabled: default_air_hockey_mode_enabled(),
         }
     }
 }
