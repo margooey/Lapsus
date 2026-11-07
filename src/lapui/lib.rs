@@ -4,6 +4,7 @@ pub mod checkbox;
 pub mod grid_view;
 pub mod menu;
 pub mod menu_item;
+pub mod slider;
 pub mod status_bar_button;
 pub mod status_item;
 pub mod switch;

@@ -45,7 +45,11 @@ Debugging is currently work in progress as there are ongoing changes to support 
 
 `MAXIMUM_MAGNITUDE`: When computing the "clamped" velocity, the magnitude of the vector is computed and then compared to the maximum magnitude. If the magnitude of the vector is less than the maximum magnitude, the velocity will be "clamped" by a factor of `maximum_magnitude / magnitude`. By default, this value is set to **9000.0**, which was based purely on "feel".
 
-WIP
+`GLIDE_DECAY_PER_SECOND`: How quickly a glide slows down once you lift your finger. Every tick, the glide velocity is multiplied by a factor of `1 - glide_decay_per_second * dt`, so a higher value makes the cursor stop sooner. By default, this value is set to **6.5**, which brings a glide to a near stop in about a second.
+
+`MINIMUM_GLIDE_VELOCITY`: The slowest speed, in points per second, that a glide is allowed to move. If you lift your finger while moving slower than this, no glide will start, and an existing glide will stop once it slows down past this value. By default, this value is set to **100.0**.
+
+`VELOCITY_SMOOTHING`: Used to smooth out the trackpad velocity between touch frames. Each new velocity reading is blended with the previous one, where this value is the weight given to the new reading. A value closer to **1.0** is more responsive but jittery, and a value closer to **0.0** is smoother but laggier. By default, this value is set to **0.2**.
 
 <div align="center"><h2>Credits</h2></div>
 
