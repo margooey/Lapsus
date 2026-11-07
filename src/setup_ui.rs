@@ -246,10 +246,10 @@ impl UI {
     fn logon_item_is_enabled() -> bool {
         let app_service = unsafe { SMAppService::mainAppService() };
         let status = unsafe { app_service.status() };
-        return matches!(
+        matches!(
             status,
             SMAppServiceStatus::Enabled | SMAppServiceStatus::RequiresApproval
-        );
+        )
     }
 
     /// Builds the label/control grid from `SECTIONS`. Also returns a function that
