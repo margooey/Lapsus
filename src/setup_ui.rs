@@ -12,24 +12,27 @@
 */
 
 use lapui::{
-    app::App, checkbox::Checkbox, menu::Menu, menu_item::MenuItem,
+    app::App, checkbox::Checkbox, grid_view::GridView, menu::Menu, menu_item::MenuItem,
     status_bar_button::StatusBarButton, status_item::StatusItem, text_field::TextField,
     window::Window,
 };
 
 use objc2::{rc::Retained, sel};
 use objc2_app_kit::{
-    NSBackingStoreType, NSControlStateValueOff, NSControlStateValueOn, NSFont, NSLayoutConstraint,
-    NSTextAlignment, NSView, NSWindowStyleMask,
+    NSBackingStoreType, NSButton, NSControlStateValueOff, NSControlStateValueOn, NSFont,
+    NSGridCellPlacement, NSGridRowAlignment, NSLayoutConstraint, NSTextAlignment, NSView,
+    NSWindowStyleMask,
 };
 use objc2_foundation::{MainThreadMarker, NSArray, NSPoint, NSRect, NSSize, NSString};
 use objc2_service_management::{SMAppService, SMAppServiceStatus};
 
 const WINDOW_RECT: NSRect = new_nsrect!(0.0, 0.0, 420.0, 228.0);
 const TOP_MARGIN: f64 = 14.0;
+const BOTTOM_MARGIN: f64 = 20.0;
 const SIDE_MARGIN: f64 = 20.0;
 const LABEL_CONTROL_GAP: f64 = 6.0;
 const ROW_GAP: f64 = 8.0;
+const SECTION_GAP: f64 = ROW_GAP * 3.0;
 const LABEL_COLUMN_WIDTH: f64 = 92.0;
 const STATUS_ICON: &[u8] = include_bytes!("../assets/cursoroutline_center.png");
 
@@ -38,14 +41,61 @@ use crate::{
     utils::{env_f64, new_nsrect},
 };
 
+/// One checkbox in the settings window.
+struct Toggle {
+    title: &'static str,
+    get: fn() -> bool,
+    set: fn(bool),
+}
+
+/// A labelled group of checkboxes, e.g. "General:".
+struct Section {
+    label: &'static str,
+    toggles: &'static [Toggle],
+}
+
+/// Everything shown in the settings window. To add a setting, add a line here.
+const SECTIONS: &[Section] = &[
+    Section {
+        label: "General:",
+        toggles: &[
+            Toggle {
+                title: "Enable momentum",
+                get: UI::momentum_is_enabled,
+                set: UI::set_momentum_enabled,
+            },
+            Toggle {
+                title: "High speed",
+                get: UI::high_speed_is_enabled,
+                set: UI::set_high_speed_enabled,
+            },
+            Toggle {
+                title: "Launch on login",
+                get: UI::logon_item_is_enabled,
+                set: UI::set_logon_item_enabled,
+            },
+            Toggle {
+                title: "Enable palm rejection (Experimental)",
+                get: UI::palm_rejection_is_enabled,
+                set: UI::set_palm_rejection_enabled,
+            },
+        ],
+    },
+    Section {
+        label: "Fun:",
+        toggles: &[Toggle {
+            title: "Air hockey mode",
+            get: UI::air_hockey_mode_is_enabled,
+            set: UI::set_air_hockey_mode_enabled,
+        }],
+    },
+];
+
 pub struct UI {
     _window: Window,
     pub status_item: StatusItem,
-    _momentum_checkbox: Checkbox,
-    _high_speed_checkbox: Checkbox,
-    _logon_item_checkbox: Checkbox,
-    _palm_rejection_checkbox: Checkbox,
-    _air_hockey_mode_checkbox: Checkbox,
+    // Held so the checkbox action closures stay alive.
+    _checkboxes: Vec<Checkbox>,
 }
 
 fn control_state(enabled: bool) -> objc2_foundation::NSInteger {
@@ -133,143 +183,65 @@ impl UI {
     fn logon_item_is_enabled() -> bool {
         let app_service = unsafe { SMAppService::mainAppService() };
         let status = unsafe { app_service.status() };
-        matches!(
+        return matches!(
             status,
             SMAppServiceStatus::Enabled | SMAppServiceStatus::RequiresApproval
-        )
+        );
     }
 
-    fn apply_fun_row_constraints(
-        content_view: &Retained<NSView>,
-        fun_label: &TextField,
-        air_hockey_mode_checkbox: &Checkbox,
-        anchor_above: &objc2_app_kit::NSButton,
-    ) {
-        fun_label.set_translates_autoresizing_mask_into_constraints(false);
-        air_hockey_mode_checkbox.set_translates_autoresizing_mask_into_constraints(false);
+    /// Builds the label/checkbox grid from `SECTIONS`.
+    fn build_settings_grid(mtm: MainThreadMarker) -> (GridView, Vec<Checkbox>) {
+        let grid = GridView::new(mtm, NSRect::ZERO);
+        grid.set_row_spacing(ROW_GAP);
+        grid.set_column_spacing(LABEL_CONTROL_GAP);
+        grid.set_row_alignment(NSGridRowAlignment::FirstBaseline);
 
-        let section_gap = ROW_GAP * 3.0;
-        let constraints = NSArray::from_retained_slice(&[
-            fun_label
-                .leading_anchor()
-                .constraintEqualToAnchor_constant(&content_view.leadingAnchor(), SIDE_MARGIN),
-            fun_label
-                .width_anchor()
-                .constraintEqualToConstant(LABEL_COLUMN_WIDTH),
-            air_hockey_mode_checkbox
-                .leading_anchor()
-                .constraintEqualToAnchor_constant(
-                    &fun_label.text_field.trailingAnchor(),
-                    LABEL_CONTROL_GAP,
-                ),
-            air_hockey_mode_checkbox
-                .top_anchor()
-                .constraintEqualToAnchor_constant(&anchor_above.bottomAnchor(), section_gap),
-            air_hockey_mode_checkbox
-                .trailing_anchor()
-                .constraintLessThanOrEqualToAnchor_constant(
-                    &content_view.trailingAnchor(),
-                    -SIDE_MARGIN,
-                ),
-            fun_label
-                .first_baseline_anchor()
-                .constraintEqualToAnchor(&air_hockey_mode_checkbox.button.firstBaselineAnchor()),
-        ]);
-        NSLayoutConstraint::activateConstraints(&constraints);
-    }
+        let label_font = NSFont::systemFontOfSize(13.0);
+        let mut checkboxes = Vec::new();
+        let mut section_start_rows = Vec::new();
+        let mut row_count = 0;
 
-    fn apply_general_row_constraints(
-        content_view: &Retained<NSView>,
-        general_label: &TextField,
-        momentum_checkbox: &Checkbox,
-        high_speed_checkbox: &Checkbox,
-        logon_item_checkbox: &Checkbox,
-        palm_rejection_checkbox: &Checkbox,
-    ) {
-        general_label.set_translates_autoresizing_mask_into_constraints(false);
-        momentum_checkbox.set_translates_autoresizing_mask_into_constraints(false);
-        high_speed_checkbox.set_translates_autoresizing_mask_into_constraints(false);
-        logon_item_checkbox.set_translates_autoresizing_mask_into_constraints(false);
-        palm_rejection_checkbox.set_translates_autoresizing_mask_into_constraints(false);
+        for section in SECTIONS {
+            section_start_rows.push(row_count);
+            for (i, toggle) in section.toggles.iter().enumerate() {
+                let mut checkbox = Checkbox::init_with_title(mtm, toggle.title);
+                let set = toggle.set;
+                checkbox.set_action(mtm, move |sender: &NSButton| {
+                    set(sender.state() == NSControlStateValueOn);
+                });
+                checkbox.set_state(control_state((toggle.get)()));
 
-        let constraints = NSArray::from_retained_slice(&[
-            general_label
-                .leading_anchor()
-                .constraintEqualToAnchor_constant(&content_view.leadingAnchor(), SIDE_MARGIN),
-            general_label
-                .width_anchor()
-                .constraintEqualToConstant(LABEL_COLUMN_WIDTH),
-            momentum_checkbox
-                .leading_anchor()
-                .constraintEqualToAnchor_constant(
-                    &general_label.text_field.trailingAnchor(),
-                    LABEL_CONTROL_GAP,
-                ),
-            momentum_checkbox
-                .top_anchor()
-                .constraintEqualToAnchor_constant(&content_view.topAnchor(), TOP_MARGIN),
-            momentum_checkbox
-                .trailing_anchor()
-                .constraintLessThanOrEqualToAnchor_constant(
-                    &content_view.trailingAnchor(),
-                    -SIDE_MARGIN,
-                ),
-            general_label
-                .first_baseline_anchor()
-                .constraintEqualToAnchor(&momentum_checkbox.button.firstBaselineAnchor()),
-            high_speed_checkbox
-                .leading_anchor()
-                .constraintEqualToAnchor(&momentum_checkbox.leading_anchor()),
-            high_speed_checkbox
-                .top_anchor()
-                .constraintEqualToAnchor_constant(
-                    &momentum_checkbox.button.bottomAnchor(),
-                    ROW_GAP,
-                ),
-            high_speed_checkbox
-                .trailing_anchor()
-                .constraintLessThanOrEqualToAnchor_constant(
-                    &content_view.trailingAnchor(),
-                    -SIDE_MARGIN,
-                ),
-            logon_item_checkbox
-                .leading_anchor()
-                .constraintEqualToAnchor(&momentum_checkbox.leading_anchor()),
-            logon_item_checkbox
-                .top_anchor()
-                .constraintEqualToAnchor_constant(
-                    &high_speed_checkbox.button.bottomAnchor(),
-                    ROW_GAP,
-                ),
-            logon_item_checkbox
-                .trailing_anchor()
-                .constraintLessThanOrEqualToAnchor_constant(
-                    &content_view.trailingAnchor(),
-                    -SIDE_MARGIN,
-                ),
-            palm_rejection_checkbox
-                .leading_anchor()
-                .constraintEqualToAnchor(&momentum_checkbox.leading_anchor()),
-            palm_rejection_checkbox
-                .top_anchor()
-                .constraintEqualToAnchor_constant(
-                    &logon_item_checkbox.button.bottomAnchor(),
-                    ROW_GAP,
-                ),
-            palm_rejection_checkbox
-                .trailing_anchor()
-                .constraintLessThanOrEqualToAnchor_constant(
-                    &content_view.trailingAnchor(),
-                    -SIDE_MARGIN,
-                ),
-        ]);
-        NSLayoutConstraint::activateConstraints(&constraints);
+                // Only the first row of a section shows the section label.
+                let label: Retained<NSView> = if i == 0 {
+                    let label = TextField::label(mtm, section.label);
+                    label.set_font(label_font.clone());
+                    label.set_alignment(NSTextAlignment::Right);
+                    label.text_field.into_super().into_super()
+                } else {
+                    GridView::empty_cell(mtm)
+                };
+
+                grid.add_row_with_views(&[&label, &checkbox.button]);
+                checkboxes.push(checkbox);
+                row_count += 1;
+            }
+        }
+
+        let label_column = grid.column_at_index(0);
+        label_column.setXPlacement(NSGridCellPlacement::Trailing);
+        label_column.setWidth(LABEL_COLUMN_WIDTH);
+
+        // Extra space above every section but the first.
+        for &row in section_start_rows.iter().skip(1) {
+            grid.row_at_index(row).setTopPadding(SECTION_GAP - ROW_GAP);
+        }
+
+        (grid, checkboxes)
     }
 
     pub fn initialize() -> Self {
         let mtm = MainThreadMarker::new().expect("must be on the main thread");
         let app = App::new(mtm);
-        let label_font = NSFont::systemFontOfSize(13.0);
         app.activate();
 
         let window = Window::new(
@@ -280,75 +252,41 @@ impl UI {
             false,
         );
         window.set_title("Settings");
-        window.center();
 
-        let mut momentum_checkbox = Checkbox::init_with_title(mtm, "Enable momentum");
-        momentum_checkbox.set_action(mtm, |sender| {
-            Self::set_momentum_enabled(sender.state() == NSControlStateValueOn);
-        });
-        let mut high_speed_checkbox = Checkbox::init_with_title(mtm, "High speed");
-        high_speed_checkbox.set_action(mtm, |sender| {
-            Self::set_high_speed_enabled(sender.state() == NSControlStateValueOn);
-        });
-        let mut logon_item_checkbox = Checkbox::init_with_title(mtm, "Launch on login");
-        logon_item_checkbox.set_action(mtm, |sender| {
-            Self::set_logon_item_enabled(sender.state() == NSControlStateValueOn);
-        });
-        let mut palm_rejection_checkbox =
-            Checkbox::init_with_title(mtm, "Enable palm rejection (Experimental)");
-        palm_rejection_checkbox.set_action(mtm, |sender| {
-            Self::set_palm_rejection_enabled(sender.state() == NSControlStateValueOn);
-        });
-        let mut air_hockey_mode_checkbox = Checkbox::init_with_title(mtm, "Air hockey mode");
-        air_hockey_mode_checkbox.set_action(mtm, |sender| {
-            Self::set_air_hockey_mode_enabled(sender.state() == NSControlStateValueOn);
-        });
         let content_view = window
             .window
             .contentView()
             .expect("window should have a content view");
 
-        let general_label = TextField::label(mtm, "General:");
-        general_label.set_font(label_font.clone());
-        general_label.set_alignment(NSTextAlignment::Right);
+        let (grid, checkboxes) = Self::build_settings_grid(mtm);
+        grid.set_translates_autoresizing_mask_into_constraints(false);
+        let grid_view = &grid.grid_view;
+        content_view.addSubview(grid_view);
+        NSLayoutConstraint::activateConstraints(&NSArray::from_retained_slice(&[
+            grid_view
+                .topAnchor()
+                .constraintEqualToAnchor_constant(&content_view.topAnchor(), TOP_MARGIN),
+            grid_view
+                .leadingAnchor()
+                .constraintEqualToAnchor_constant(&content_view.leadingAnchor(), SIDE_MARGIN),
+            grid_view
+                .trailingAnchor()
+                .constraintLessThanOrEqualToAnchor_constant(
+                    &content_view.trailingAnchor(),
+                    -SIDE_MARGIN,
+                ),
+            grid_view
+                .bottomAnchor()
+                .constraintEqualToAnchor_constant(&content_view.bottomAnchor(), -BOTTOM_MARGIN),
+        ]));
 
-        let fun_label = TextField::label(mtm, "Fun:");
-        fun_label.set_font(label_font);
-        fun_label.set_alignment(NSTextAlignment::Right);
-
-        momentum_checkbox.size_to_fit();
-        momentum_checkbox.set_state(control_state(Self::momentum_is_enabled()));
-        high_speed_checkbox.size_to_fit();
-        high_speed_checkbox.set_state(control_state(Self::high_speed_is_enabled()));
-        logon_item_checkbox.size_to_fit();
-        logon_item_checkbox.set_state(control_state(Self::logon_item_is_enabled()));
-        palm_rejection_checkbox.size_to_fit();
-        palm_rejection_checkbox.set_state(control_state(Self::palm_rejection_is_enabled()));
-        air_hockey_mode_checkbox.size_to_fit();
-        air_hockey_mode_checkbox.set_state(control_state(Self::air_hockey_mode_is_enabled()));
-
-        content_view.addSubview(&general_label.text_field);
-        content_view.addSubview(&momentum_checkbox.button);
-        content_view.addSubview(&high_speed_checkbox.button);
-        content_view.addSubview(&logon_item_checkbox.button);
-        content_view.addSubview(&palm_rejection_checkbox.button);
-        content_view.addSubview(&fun_label.text_field);
-        content_view.addSubview(&air_hockey_mode_checkbox.button);
-
-        Self::apply_general_row_constraints(
-            &content_view,
-            &general_label,
-            &momentum_checkbox,
-            &high_speed_checkbox,
-            &logon_item_checkbox,
-            &palm_rejection_checkbox,
-        );
-        Self::apply_fun_row_constraints(
-            &content_view,
-            &fun_label,
-            &air_hockey_mode_checkbox,
-            &palm_rejection_checkbox.button,
-        );
+        // Size the window to fit the grid, keeping at least the default width.
+        let fitting = content_view.fittingSize();
+        window.window.setContentSize(NSSize::new(
+            fitting.width.max(WINDOW_RECT.size.width),
+            fitting.height,
+        ));
+        window.center();
 
         let status_item = StatusItem::init();
         let status_bar_button = StatusBarButton::new(mtm, &status_item);
@@ -377,11 +315,7 @@ impl UI {
         Self {
             _window: window,
             status_item,
-            _momentum_checkbox: momentum_checkbox,
-            _high_speed_checkbox: high_speed_checkbox,
-            _logon_item_checkbox: logon_item_checkbox,
-            _palm_rejection_checkbox: palm_rejection_checkbox,
-            _air_hockey_mode_checkbox: air_hockey_mode_checkbox,
+            _checkboxes: checkboxes,
         }
     }
 }

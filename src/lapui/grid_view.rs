@@ -1,5 +1,8 @@
 use objc2::{ClassType, MainThreadMarker, MainThreadOnly, rc::Retained};
-use objc2_app_kit::{NSGridCellPlacement, NSGridRow, NSGridView, NSView};
+use objc2_app_kit::{
+    NSGridCell, NSGridCellPlacement, NSGridColumn, NSGridRow, NSGridRowAlignment, NSGridView,
+    NSView,
+};
 use objc2_core_foundation::CGFloat;
 use objc2_foundation::{NSArray, NSRect};
 
@@ -36,6 +39,23 @@ impl GridView {
 
     pub fn set_x_placeholder(&self, x_placement: NSGridCellPlacement) {
         self.grid_view.setXPlacement(x_placement)
+    }
+
+    pub fn set_row_alignment(&self, row_alignment: NSGridRowAlignment) {
+        self.grid_view.setRowAlignment(row_alignment)
+    }
+
+    pub fn column_at_index(&self, index: isize) -> Retained<NSGridColumn> {
+        self.grid_view.columnAtIndex(index)
+    }
+
+    pub fn row_at_index(&self, index: isize) -> Retained<NSGridRow> {
+        self.grid_view.rowAtIndex(index)
+    }
+
+    /// Placeholder view for a grid cell that should stay empty.
+    pub fn empty_cell(mtm: MainThreadMarker) -> Retained<NSView> {
+        NSGridCell::emptyContentView(mtm)
     }
 
     pub fn set_translates_autoresizing_mask_into_constraints(
