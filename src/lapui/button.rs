@@ -62,6 +62,17 @@ impl Button {
         }
     }
 
+    /// A standard push button, e.g. "OK" or "Restore Defaults".
+    pub fn with_title(mtm: MainThreadMarker, title: &str) -> Self {
+        let button = unsafe {
+            NSButton::buttonWithTitle_target_action(&NSString::from_str(title), None, None, mtm)
+        };
+        Self {
+            button,
+            _target: None,
+        }
+    }
+
     pub fn set_title(&mut self, string: &str) {
         self.button.setTitle(&NSString::from_str(string));
     }

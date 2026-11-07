@@ -91,6 +91,12 @@ impl Config {
     }
 }
 
+/// Resets every setting to its default and saves it.
+pub fn restore_defaults() {
+    *config() = Config::defaults();
+    persist_config();
+}
+
 fn settings_file_path() -> Option<PathBuf> {
     let home = env::var_os("HOME")?;
     Some(
