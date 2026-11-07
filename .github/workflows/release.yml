@@ -15,9 +15,19 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: true
+
+    - name: Check tag matches Cargo.toml version
+      run: |
+        crate_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "Lapsus") | .version')
+        if [ "v$crate_version" != "$GITHUB_REF_NAME" ]; then
+          echo "::error::Tag $GITHUB_REF_NAME does not match Cargo.toml version $crate_version. Update the version in Cargo.toml before tagging."
+          exit 1
+        fi
+
+    - uses: Swatinem/rust-cache@v2
 
     - name: Run tests
       run: cargo test --verbose
@@ -29,12 +39,10 @@ jobs:
       run: cargo bundle --release
 
     - name: Zip .app bundle
-      run: |
-        cd target/release/bundle/osx
-        zip -r Lapsus.zip Lapsus.app
+      run: ditto -c -k --keepParent target/release/bundle/osx/Lapsus.app target/release/bundle/osx/Lapsus.zip
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         files: target/release/bundle/osx/Lapsus.zip
         generate_release_notes: true

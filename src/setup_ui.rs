@@ -135,11 +135,14 @@ const SECTIONS: &[Section] = &[
     },
 ];
 
+/// Controls kept alive so their action closures keep working.
+type Controls = Vec<Box<dyn std::any::Any>>;
+
 pub struct UI {
     _window: Window,
     pub status_item: StatusItem,
     // Held so the controls' action closures stay alive.
-    _controls: Vec<Box<dyn std::any::Any>>,
+    _controls: Controls,
     _restore_defaults_button: Button,
 }
 
@@ -254,16 +257,14 @@ impl UI {
 
     /// Builds the label/control grid from `SECTIONS`. Also returns a function that
     /// re-reads every setting into its control.
-    fn build_settings_grid(
-        mtm: MainThreadMarker,
-    ) -> (GridView, Vec<Box<dyn std::any::Any>>, Box<dyn Fn()>) {
+    fn build_settings_grid(mtm: MainThreadMarker) -> (GridView, Controls, Box<dyn Fn()>) {
         let grid = GridView::new(mtm, NSRect::ZERO);
         grid.set_row_spacing(ROW_GAP);
         grid.set_column_spacing(LABEL_CONTROL_GAP);
         grid.set_row_alignment(NSGridRowAlignment::FirstBaseline);
 
         let label_font = NSFont::systemFontOfSize(13.0);
-        let mut controls: Vec<Box<dyn std::any::Any>> = Vec::new();
+        let mut controls: Controls = Vec::new();
         let mut section_start_rows = Vec::new();
         let mut slider_rows = Vec::new();
         let mut refreshers: Vec<Box<dyn Fn()>> = Vec::new();
