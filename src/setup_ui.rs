@@ -127,11 +127,18 @@ const SECTIONS: &[Section] = &[
     },
     Section {
         label: Some("Fun:"),
-        rows: &[Row::Checkbox {
-            title: "Air hockey mode",
-            get: UI::air_hockey_mode_is_enabled,
-            set: UI::set_air_hockey_mode_enabled,
-        }],
+        rows: &[
+            Row::Checkbox {
+                title: "Air hockey mode",
+                get: UI::air_hockey_mode_is_enabled,
+                set: UI::set_air_hockey_mode_enabled,
+            },
+            Row::Checkbox {
+                title: "Wrap around screen edges",
+                get: UI::wrap_around_is_enabled,
+                set: UI::set_wrap_around_enabled,
+            },
+        ],
     },
 ];
 
@@ -240,6 +247,15 @@ impl UI {
 
     fn air_hockey_mode_is_enabled() -> bool {
         config().air_hockey_mode_enabled
+    }
+
+    fn set_wrap_around_enabled(is_enabled: bool) {
+        config().wrap_around_enabled = is_enabled;
+        crate::config::persist_config();
+    }
+
+    fn wrap_around_is_enabled() -> bool {
+        config().wrap_around_enabled
     }
 
     fn set_logon_item_enabled(is_enabled: bool) {

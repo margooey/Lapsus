@@ -155,6 +155,24 @@ impl Engine {
         }
     }
 
+    /// sends a glide that leaves one edge of the desktop back in from the opposite edge.
+    fn wrap_around(&mut self) {
+        let bounds = self.desktop_bounds;
+        let (min_x, width) = (bounds.origin.x, bounds.size.width);
+        let (min_y, height) = (bounds.origin.y, bounds.size.height);
+        let pos = &mut self.state.position;
+        if pos.x < min_x {
+            pos.x += width;
+        } else if pos.x > min_x + width {
+            pos.x -= width;
+        }
+        if pos.y < min_y {
+            pos.y += height;
+        } else if pos.y > min_y + height {
+            pos.y -= height;
+        }
+    }
+
     pub fn apply_momentum(&mut self, delta_time: Float) {
         let config = config();
         let glide_decay_per_second = config.glide_decay_per_second;
@@ -174,6 +192,8 @@ impl Engine {
 
         if config.air_hockey_mode_enabled && self.desktop_bounds != Rect::null() {
             self.do_air_hockey_mode_stuff();
+        } else if config.wrap_around_enabled && self.desktop_bounds != Rect::null() {
+            self.wrap_around();
         }
 
         self.update_cursor_position_on_screen();
