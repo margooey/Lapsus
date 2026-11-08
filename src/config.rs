@@ -39,6 +39,9 @@ fn default_palm_rejection_enabled() -> bool {
 fn default_air_hockey_mode_enabled() -> bool {
     false
 }
+fn default_update_check_enabled() -> bool {
+    true
+}
 fn default_wrap_around_enabled() -> bool {
     false
 }
@@ -64,6 +67,11 @@ pub struct Config {
     pub air_hockey_mode_enabled: bool,
     #[serde(default = "default_wrap_around_enabled")]
     pub wrap_around_enabled: bool,
+    #[serde(default = "default_update_check_enabled")]
+    pub update_check_enabled: bool,
+    /// A release the user chose to skip in the update dialog, e.g. "v2.3.0".
+    #[serde(default)]
+    pub skipped_version: Option<String>,
 }
 
 impl Config {
@@ -93,6 +101,8 @@ impl Config {
             palm_rejection_enabled: default_palm_rejection_enabled(),
             air_hockey_mode_enabled: default_air_hockey_mode_enabled(),
             wrap_around_enabled: default_wrap_around_enabled(),
+            update_check_enabled: default_update_check_enabled(),
+            skipped_version: None,
         }
     }
 }

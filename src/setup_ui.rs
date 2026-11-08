@@ -88,6 +88,11 @@ const SECTIONS: &[Section] = &[
                 get: UI::palm_rejection_is_enabled,
                 set: UI::set_palm_rejection_enabled,
             },
+            Row::Checkbox {
+                title: "Check for updates on launch",
+                get: UI::update_check_is_enabled,
+                set: UI::set_update_check_enabled,
+            },
         ],
     },
     Section {
@@ -247,6 +252,15 @@ impl UI {
 
     fn air_hockey_mode_is_enabled() -> bool {
         config().air_hockey_mode_enabled
+    }
+
+    fn set_update_check_enabled(is_enabled: bool) {
+        config().update_check_enabled = is_enabled;
+        crate::config::persist_config();
+    }
+
+    fn update_check_is_enabled() -> bool {
+        config().update_check_enabled
     }
 
     fn set_wrap_around_enabled(is_enabled: bool) {

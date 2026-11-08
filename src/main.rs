@@ -4,6 +4,7 @@ pub mod engine;
 pub mod setup_ui;
 pub mod tests;
 pub mod trackpad;
+pub mod updater;
 pub mod utils;
 
 use std::cell::RefCell;
@@ -46,6 +47,7 @@ define_class!(
         #[unsafe(method(tick:))]
         fn tick(&self, _timer: &NSTimer) {
             utils::disable_local_event_suppression();
+            updater::show_alert_if_found(MainThreadMarker::from(self));
 
             if let Some(controller) = self.ivars().controller.borrow_mut().as_mut() {
                 controller.update_state();
@@ -77,6 +79,7 @@ define_class!(
             *self.ivars().ui.borrow_mut() = Some(ui);
             *self.ivars().controller.borrow_mut() = Some(controller);
             *self.ivars().timer.borrow_mut() = Some(timer);
+            updater::check_in_background();
         }
 
         #[unsafe(method(applicationWillTerminate:))]
