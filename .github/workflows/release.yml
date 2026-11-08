@@ -32,8 +32,12 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
 
+    # cargo-bundle 0.12.0 depends on sigstore 0.14.0, which no longer compiles on newer Rust.
+    # Build just this tool with a known-good toolchain. The app itself still uses stable.
     - name: Install cargo-bundle
-      run: cargo install cargo-bundle
+      run: |
+        rustup toolchain install 1.92.0 --profile minimal
+        cargo +1.92.0 install cargo-bundle --version 0.12.0 --locked
 
     - name: Bundle .app
       run: cargo bundle --release
